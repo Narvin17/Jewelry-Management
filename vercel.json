@@ -1,15 +1,10 @@
 {
-  "build": {
-    "env": {
-      "FLASK_APP": "app.py",
-      "FLASK_DEBUG": "0",
-      "SECRET_KEY": "NarvinTomSampanCastro0917",
-      "SQLALCHEMY_DATABASE_URI": "postgresql+pg8000://postgres:castro12@your-production-db-host:5432/jewelry_management"
-    }
-  },
-  "functions": {
-    "api/**/*.py": {
-      "runtime": "python3.9"
-    }
+    "version": 2,
+    "builds": [
+      { "src": "app.py", "use": "@vercel/python" }
+    ],
+    "routes": [
+      { "src": "/(.*)", "dest": "app.py" }
+    ]
   }
-}
+  
