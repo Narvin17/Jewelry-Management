@@ -4,7 +4,8 @@
       "FLASK_APP": "app.py",
       "FLASK_DEBUG": "0",
       "SECRET_KEY": "NarvinTomSampanCastro0917",
-      "SQLALCHEMY_DATABASE_URI": "postgresql+pg8000://postgres:castro12@your-production-db-host:5432/jewelry_management",
+      "SQLALCHEMY_DATABASE_URI": "postgresql+pg8000://postgres:castro12@your-production-db-host:5432/jewelry_management"
+    },
     "commands": {
       "install": "poetry install"
     }
