@@ -5,9 +5,16 @@ from wtforms.validators import DataRequired, NumberRange
 from datetime import datetime
 from flask_login import UserMixin
 from flask import session
+import os
 
 
 db = SQLAlchemy()
+
+class Config:
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER')
+    MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))
 
 # User table with roles and login integration
 class User(db.Model, UserMixin):
