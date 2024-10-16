@@ -44,3 +44,4 @@ Werkzeug==2.3.7
 wheel==0.40.0
 wrapt==1.16.0
 WTForms==3.0.1
+python-barcode==0.13.1
