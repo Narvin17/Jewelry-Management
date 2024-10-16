@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
 from flask import session
+from sqlalchemy import Column, Integer, String
 
 db = SQLAlchemy()
 
