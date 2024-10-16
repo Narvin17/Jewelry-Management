@@ -1,0 +1,100 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Add Product
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Display Flashed Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('add_product') }}" enctype="multipart/form-data">
+        <!-- CSRF Token -->
+        {{ form.hidden_tag() }}
+        
+        <!-- Product Name and Category -->
+        <div class="row">
+            <div class="col-md-6 mb-2">
+                {{ form.product_name.label(class="form-label") }}
+                {{ form.product_name(class="form-control form-control-sm", placeholder="Enter product name") }}
+                {% for error in form.product_name.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6 mb-2">
+                {{ form.category.label(class="form-label") }}
+                {{ form.category(class="form-select form-select-sm") }}
+                {% for error in form.category.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Product Photo Upload -->
+        <div class="row">
+            <div class="col-md-6 mb-2">
+                {{ form.photo.label(class="form-label") }}
+                {{ form.photo(class="form-control form-control-sm") }}
+                {% for error in form.photo.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Karat, Gold Type, and Weight -->
+        <div class="row">
+            <div class="col-md-3 mb-2">
+                {{ form.karat.label(class="form-label") }}
+                {{ form.karat(class="form-select form-select-sm") }}
+                {% for error in form.karat.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-3 mb-2">
+                {{ form.gold_type.label(class="form-label") }}
+                {{ form.gold_type(class="form-select form-select-sm") }}
+                {% for error in form.gold_type.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-3 mb-2">
+                {{ form.weight.label(class="form-label") }}
+                {{ form.weight(class="form-control form-control-sm", placeholder="Enter weight in grams") }}
+                {% for error in form.weight.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Size and Quantity -->
+        <div class="row">
+            <div class="col-md-6 mb-2">
+                {{ form.size.label(class="form-label") }}
+                {{ form.size(class="form-control form-control-sm", placeholder="Available size") }}
+                {% for error in form.size.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6 mb-2">
+                {{ form.quantity.label(class="form-label") }}
+                {{ form.quantity(class="form-control form-control-sm", placeholder="Enter quantity") }}
+                {% for error in form.quantity.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-sm mt-3">Add Product</button>
+    </form>
+</div>
+{% endblock %}

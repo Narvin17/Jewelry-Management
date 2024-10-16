@@ -1,0 +1,13 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+    <h1>{{ sold_product.product_name }}</h1>
+    <p>Category: {{ sold_product.category }}</p>
+    <p>Quantity Sold: {{ sold_product.quantity_sold }}</p>
+    <p>Total Price: {{ sold_product.total_price }}</p>
+    <p>Date Sold: {{ sold_product.date_sold }}</p>
+    <p>Karat: {{ sold_product.karat }}</p>
+    <p>Gold Type: {{ sold_product.gold_type }}</p>
+    <p>Size: {{ sold_product.size }}</p>
+    <p>Barcode: {{ sold_product.barcode }}</p>
+{% endblock %}

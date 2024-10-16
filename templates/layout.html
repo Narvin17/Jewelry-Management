@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>SMC | System Dashboard</title>
+</head>
+<body>
+    <!-- Container to hold everything -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 sidebar vh-100 d-flex flex-column p-3" style="background-color: hsl(212, 100%, 79%); color: #007bff;">
+                <div class="d-flex align-items-center">
+                    <h1 class="fw-bold smc-large">SMC</h1>
+                    <span class="vertical-line"></span>
+                    <span class="text-secondary" style="font-size: 1rem; margin-left: 1.9px;">Jewelry Mngmnt.</span>
+                </div>
+                
+                <!-- Navigation Items -->
+                <ul class="nav flex-column mt-4 flex-grow-1">
+                    <!-- Display only Catalog if the user is not authenticated, otherwise show full sidebar -->
+                        {% if not current_user.is_authenticated %}
+                        <!-- Guest view (not logged in) -->
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('catalog') }}">
+                                <i class="fas fa-book-open"></i> Catalog
+                            </a>
+                        </li>
+                        {% else %}
+                        <!-- Authenticated view (logged in) -->
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('catalog') }}">
+                                <i class="fas fa-book-open"></i> Catalog
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('inventory') }}">
+                                <i class="fas fa-boxes"></i> Inventory
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('sold_product') }}">
+                                <i class="fas fa-shopping-cart"></i> Sold Products
+                            </a>
+                        </li>
+                        <!-- Expense link visible only for admin users -->
+                        {% if current_user.role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('expenses') }}">
+                                <i class="fas fa-receipt"></i> Expense List
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('reports_dashboard') }}">
+                                <i class="fas fa-chart-line"></i> Statistical Reports
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('add_product') }}">
+                                <i class="fas fa-plus-circle"></i> Add Product
+                            </a>
+                        </li>
+                    {% endif %}
+
+                </ul>
+            
+                <!-- User Info Section at the Bottom -->
+                <div class="user-info p-3" style="background-color: hsl(212, 80%, 90%); border-radius: 10px;">
+                    <i class="fas fa-user-circle fa-2x"></i>
+                    {% if current_user.is_authenticated %}
+                        <span class="text-black ms-2">{{ current_user.username }}</span>
+                        <span class="text-muted small">({{ current_user.role }})</span>
+                        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-danger d-block mt-2" style="width: 100%;">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    {% else %}
+                        <span class="text-black ms-2">Guest</span>
+                        <a href="{{ url_for('login') }}" class="btn btn-sm btn-primary d-block mt-2" style="width: 100%;">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </a>
+                    {% endif %}
+                </div>
+            </nav>
+            
+
+            <!-- Main Content -->
+            <div class="col-md-10 main-content p-4">
+                <!-- Top Bar -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="search-container"></div>
+                </div>
+
+                <!-- Page Header -->
+                <header class="mb-4">
+                    <h1>{% block header %}Dashboard{% endblock %}</h1>
+                </header>
+
+                <!-- Flash Messages -->
+                <main>
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="alert-container">
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                    {% block content %}{% endblock %}
+                </main>
+
+                <!-- Footer -->
+                <footer class="custom-footer">
+                    <p>&copy; 2024 Jewelry Management System</p>
+                </footer>                               
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

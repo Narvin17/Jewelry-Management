@@ -1,0 +1,44 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+<div class="container d-flex align-items-center" style="padding: 0; margin-top: 0;">
+    <h1 class="fw-bold" style="font-size: 2.5rem; text-transform: uppercase; margin: 0;">
+        Inventory Tree
+    </h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="accordion" id="inventoryAccordion">
+
+        <!-- Loop through categories in the inventory tree -->
+        {% for category, data in inventory_tree.items() %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading-{{ loop.index }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}" aria-expanded="true" aria-controls="collapse-{{ loop.index }}">
+                    {{ category }} ({{ data.count }} Products)
+                </button>
+            </h2>
+            <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ loop.index }}" data-bs-parent="#inventoryAccordion">
+                <div class="accordion-body">
+                    <ul class="list-group">
+                        <!-- Loop through the products under this category -->
+                        {% for product in data.products %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ product.product_name }} - Price: ₱{{ product.price_per_unit }} - Stock: {{ product.quantity }}
+                            <span class="badge bg-primary rounded-pill">{{ product.size }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+    </div>
+</div>
+
+<!-- Ensure you include the Bootstrap JS and its dependencies for the accordion to work -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

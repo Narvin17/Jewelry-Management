@@ -1,0 +1,330 @@
+/* ========================= */
+/* General Styles            */
+/* ========================= */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f8f9fa;
+    color: #343a40;
+}
+
+/* ========================= */
+/* Sidebar Styles            */
+/* ========================= */
+.smc-large {
+    font-size: 3rem; /* Base font size */
+    transform: scale(1.1, 1.5); /* Stretch vertically */
+    display: inline-block; /* Needed to apply transform on inline text */
+}
+
+.vertical-line {
+    display: inline-block;
+    width: 2px; /* Make the line narrow */
+    height: 50px; /* Adjust the height to make it taller */
+    background-color: hwb(0 49% 51%); /* Line color */
+    margin-left: 8px; /* Move the line more to the right */
+}
+
+
+.sidebar {
+    height: 100vh;
+    width: 210px;
+    position: fixed;
+    background-color: #8bc5ff;
+    color: #8bc5ff;
+    padding-top: 20px;
+    box-sizing: border-box;
+    
+}
+
+.sidebar h2 {
+    text-align: left;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.sidebar ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar ul li {
+    padding: 5px 5px; /* Reduced padding to make the items closer together */
+    font-size: 0.9em; /* Reduced font size to make the items smaller */
+    border-bottom: 1px solid #bddeff;
+}
+
+.sidebar ul li:last-child {
+    border-bottom: none;
+}
+
+.sidebar ul li a {
+    padding-left: 5px; /* Added padding-left to move text closer to the left */
+    color: #ffffff;
+    text-decoration: none;
+    display: block;
+    transition: background 0.3s, color 0.3s;
+}
+
+.sidebar ul li a:hover {
+    background-color: #495057;
+    color: #ffc107;
+}
+
+/* ========================= */
+/* Main Content Styles       */
+/* ========================= */
+.main-content {
+    margin-left: 200px;
+    padding: 30px;
+    background-color: #ffffff;
+    min-height: 100vh;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* ========================= */
+/* Header Styles             */
+/* ========================= */
+header {
+    margin-bottom: 20px;
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+/* ========================= */
+/* Footer Styles             */
+/* ========================= */
+.custom-footer {
+    background-color: #a2d1ff;
+    color: #000000;
+    text-align: center;
+    padding: 5px 0;
+    height: 20px;
+    position: fixed;
+    bottom: 0;
+    width: calc(100% - 200px);
+    font-size: 10px; /* Ensures the smaller font size */
+    margin-top: 10px; /* Added for spacing consistency */
+}
+
+/* ========================= */
+/* Table Styles              */
+/* ========================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #ffffff;
+}
+
+table, th, td {
+    border: 1px solid #dee2e6;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #343a40;
+    color: #ffffff;
+}
+
+tr:nth-child(even) {
+    background-color: #f1f1f1;
+}
+
+th:last-child,
+td:last-child {
+    width: 150px;
+}
+
+/* ========================= */
+/* Actions Column Styles     */
+/* ========================= */
+.actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
+
+.actions form {
+    display: inline-block;
+    margin: 0;
+}
+
+.actions .btn {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 0.85em;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.actions .btn-warning {
+    background-color: #ffc107;
+    color: #343a40;
+    border: none;
+}
+
+.actions .btn-warning:hover {
+    background-color: #e0a800;
+}
+
+.actions .btn-success {
+    background-color: #28a745;
+    color: #ffffff;
+    border: none;
+}
+
+.actions .btn-success:hover {
+    background-color: #218838;
+}
+
+.actions .btn-danger {
+    background-color: #dc3545;
+    color: #ffffff;
+    border: none;
+}
+
+.actions .btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* ========================= */
+/* Flash Messages            */
+/* ========================= */
+.flashes {
+    list-style-type: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.flashes li {
+    background-color: #28a745;
+    padding: 15px;
+    border-radius: 5px;
+    color: #ffffff;
+    margin-bottom: 10px;
+}
+
+/* ========================= */
+/* Card Styles for Data Display */
+/* ========================= */
+.card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+    width: calc(100% - 1.5em);
+    display: inline-block;
+    vertical-align: top;
+    border: 1px solid #eaeaea; /* Added twice, keeping it for reference */
+    overflow: hidden;
+}
+
+.card-body {
+    padding: 15px;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    margin-bottom: 10px;
+}
+
+.card-text {
+    font-size: 1rem;
+    color: #6c757d;
+}
+
+.card h3 {
+    margin: 0;
+    font-size: 1.8em;
+}
+
+.card p {
+    color: #6c757d;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: scale(1.05);
+    transition: all 0.3s ease;
+}
+
+/* ========================= */
+/* Chart and Demographic Card Styling */
+/* ========================= */
+.chart-card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    padding: 25px;
+    margin-top: 20px;
+}
+
+/* ========================= */
+/* Button Styles             */
+/* ========================= */
+.btn-primary {
+    background-color: #343a40;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #495057;
+}
+
+/* ========================= */
+/* Collapse Transition Styles */
+/* ========================= */
+.collapse {
+    transition: height 0.3s ease;
+}
+
+/* ========================= */
+/* Spacing for Elements      */
+/* ========================= */
+.spacer {
+    margin-bottom: 20px;
+}
+
+/* ========================= */
+/* Responsive Design         */
+/* ========================= */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 20px;
+    }
+
+    footer {
+        width: 100%;
+        position: relative;
+    }
+
+    .card {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .actions {
+        flex-direction: column;
+        gap: 3px;
+    }
+}

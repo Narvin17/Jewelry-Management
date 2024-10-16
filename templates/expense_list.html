@@ -1,0 +1,47 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Expense List
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <a href="{{ url_for('add_expense') }}" class="btn btn-primary mb-3">Add Expense</a>
+
+            <thead class="table-dark">
+                <tr>
+                    <th>Supplier</th>
+                    <th>Price per Gram</th>
+                    <th>Total Weight</th>
+                    <th>Time Bought</th>
+                    <th>Total Price</th>  <!-- Total Price column -->
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in expenses %}
+                <tr>
+                    <td>{{ expense.supplier }}</td>
+                    <td>{{ expense.price_per_gram }}</td>
+                    <td>{{ expense.total_weight }}</td>
+                    <td>{{ expense.time_bought.strftime('%Y-%m-%d') }}</td>
+                    <!-- Display the total_price stored in the database -->
+                    <td>{{ expense.price_per_gram * expense.total_weight }}</td>
+                    <td>
+                        <form action="{{ url_for('remove_expense', expense_id=expense.id) }}" method="POST">
+                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">No expenses available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

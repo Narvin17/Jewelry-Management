@@ -1,0 +1,29 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Inventory Report
+{% endblock %}
+
+{% block content %}
+    <h3>Low-Stock Items</h3>
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Total Stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in low_stock_items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.total_stock }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="2">No low-stock items found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

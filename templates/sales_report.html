@@ -1,0 +1,104 @@
+{% extends 'layout.html' %}
+{% block header %}Sales Report{% endblock %}
+{% block content %}
+    <!-- Form to Select Time Frame -->
+    <form method="GET" action="{{ url_for('sales_report') }}">
+        <label for="time_frame">Select Time Frame:</label>
+        <select name="time_frame" id="time_frame" class="form-select" onchange="this.form.submit()">
+            <option value="daily" {% if time_frame == 'daily' %}selected{% endif %}>Daily</option>
+            <option value="weekly" {% if time_frame == 'weekly' %}selected{% endif %}>Weekly</option>
+            <option value="monthly" {% if time_frame == 'monthly' %}selected{% endif %}>Monthly</option>
+            <option value="yearly" {% if time_frame == 'yearly' %}selected{% endif %}>Yearly</option>
+        </select>
+    </form>
+
+    <!-- Table to Display Sales Data -->
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>Period</th>
+                <th>Total Sales (₱)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if sales_data[time_frame] %}
+                {% for row in sales_data[time_frame] %}
+                    <tr>
+                        <td>{{ row.period }}</td>
+                        <td>₱{{ row.total_sales }}</td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="2" class="text-center">No data available for the selected time frame.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <!-- Div for Highcharts Graph -->
+    <div id="container" style="width: 100%;"></div>
+
+    <!-- Define labels and data for the chart in JavaScript -->
+    <script type="text/javascript">
+        var labels = JSON.parse('{{ labels | default([]) | tojson | safe }}');
+        var data = JSON.parse('{{ data | default([]) | tojson | safe }}');
+    </script>
+
+    <!-- Existing Chart.js Code -->
+    <canvas id="salesChart" width="400" height="300"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+            /* eslint-disable */  // Or use /* jshint ignore:start */
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        const salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,  // Use the labels variable
+                datasets: [{
+                    label: 'Total Sales (₱)',
+                    data: data,  // Use the data variable
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.4,
+                    borderWidth: 2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '{{ time_frame.capitalize() }}',
+                        },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Total Sales (₱)',
+                        },
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    });
+    </script>
+
+    <!-- Existing styles -->
+    <style>
+        #salesChart {
+            height: 300px !important;
+            width: 1200px !important; /* Adjust this height as needed */
+        }
+    </style>
+{% endblock %}

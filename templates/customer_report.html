@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+{% block header %}Top Customers{% endblock %}
+{% block content %}
+    <h3>Top 10 Customers by Total Spending</h3>
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>Customer Name</th>
+                <th>Total Spent (₱)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer_name, total_spent in top_customers %}
+                <tr>
+                    <td>{{ customer_name }}</td>
+                    <td>₱{{ total_spent }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

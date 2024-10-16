@@ -1,0 +1,15 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Confirm Remove Product
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p>Are you sure you want to remove the product: <strong>{{ product.product_name }}</strong>?</p>
+    <form action="{{ url_for('remove_product', product_id=product.id) }}" method="POST">
+        <button type="submit" class="btn btn-danger">Confirm Remove</button>
+        <a href="{{ url_for('inventory') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

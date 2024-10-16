@@ -1,0 +1,53 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Sales Revenue
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <form method="GET" action="/sold_product" class="mb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <label for="year" class="form-label">Select Year:</label>
+                <select id="year" name="year" class="form-select">
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <!-- Add more years as needed -->
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="month" class="form-label">Select Month:</label>
+                <select id="month" name="month" class="form-select">
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <!-- Add more months as needed -->
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Show Data</button>
+            </div>
+        </div>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Quantity Sold</th>
+                    <th>Total Sales</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td>{{ sale.date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ sale.quantity_sold }}</td>
+                    <td>{{ sale.total_price }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,361 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+<div class="container d-flex align-items-center justify-content-between" style="padding: 0; margin-top: 0;">
+    <!-- Inventory Management Header -->
+    <h1 class="fw-bold" style="font-size: 2.5rem; text-transform: uppercase; margin: 0;">
+        Inventory Management
+    </h1>
+
+    <!-- Search, Gold Prices Form, and View Inventory Tree Button -->
+    <div class="d-flex align-items-center">
+        <!-- Search Bar -->
+        <div class="input-group mb-3" style="max-width: 250px; margin-right: 1rem;">
+            <input type="text" id="search-bar" class="form-control form-control-sm" placeholder="Search..." onkeyup="filterTable()">
+            <button class="btn btn-outline-secondary btn-sm" type="button"><i class="fas fa-search"></i></button>
+        </div>
+
+        <!-- Gold Prices Form -->
+        <form action="{{ url_for('update_gold_prices') }}" method="POST" class="row g-2" style="font-size: 0.8rem; margin-right: 1rem;">
+            {{ form.hidden_tag() }}  <!-- CSRF Token included here -->
+
+            <div class="col-md-3">
+                {{ form.chinese_18k.label(class="form-label") }}
+                {{ form.chinese_18k(class="form-control form-control-sm", placeholder="Chinese 18K Price") }}
+                {% if form.chinese_18k.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.chinese_18k.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                {{ form.chinese_21k.label(class="form-label") }}
+                {{ form.chinese_21k(class="form-control form-control-sm", placeholder="Chinese 21K Price") }}
+                {% if form.chinese_21k.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.chinese_21k.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                {{ form.saudi_18k.label(class="form-label") }}
+                {{ form.saudi_18k(class="form-control form-control-sm", placeholder="Saudi 18K Price") }}
+                {% if form.saudi_18k.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.saudi_18k.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                {{ form.saudi_21k.label(class="form-label") }}
+                {{ form.saudi_21k(class="form-control form-control-sm", placeholder="Saudi 21K Price") }}
+                {% if form.saudi_21k.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.saudi_21k.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col-12 text-end mt-2">
+                {{ form.submit(class="btn btn-success btn-sm") }}
+            </div>
+        </form>
+
+        <!-- View Inventory Tree Button -->
+        <button type="button" class="btn btn-primary btn-sm" id="inventoryTreeBtn">
+            View Inventory Tree
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- JavaScript for filtering the table -->
+<script>
+function filterTable() {
+    let input = document.getElementById("search-bar").value.toLowerCase();
+    let rows = document.querySelectorAll("tbody tr");
+
+    rows.forEach(row => {
+        let productName = row.querySelector("td:first-child").textContent.toLowerCase();
+        let category = row.querySelector("td:nth-child(2)").textContent.toLowerCase();
+        let barcode = row.querySelector("td:nth-child(9)").textContent.toLowerCase();
+
+        if (productName.includes(input) || category.includes(input) || barcode.includes(input)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
+</script>
+
+<!-- Inventory Table -->
+<div class="container mt-4">
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Price (₱)</th>
+                    <th>Karat</th>
+                    <th>Gold Type</th>
+                    <th>Weight (grams)</th>
+                    <th>Price per gram (₱)</th>
+                    <th>Barcode</th>
+                    <th style="width: 200px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>
+                        <!-- Calculate and display total price based on price per gram and weight -->
+                        {% if item.karat == '18K' and item.gold_type == 'Chinese Gold' %}
+                            ₱{{ "%.2f"|format(prices.chinese_18k * item.weight) }}
+                        {% elif item.karat == '21K' and item.gold_type == 'Chinese Gold' %}
+                            ₱{{ "%.2f"|format(prices.chinese_21k * item.weight) }}
+                        {% elif item.karat == '18K' and item.gold_type == 'Saudi Gold' %}
+                            ₱{{ "%.2f"|format(prices.saudi_18k * item.weight) }}
+                        {% elif item.karat == '21K' and item.gold_type == 'Saudi Gold' %}
+                            ₱{{ "%.2f"|format(prices.saudi_21k * item.weight) }}
+                        {% else %}
+                            ₱{{ "%.2f"|format(item.price_per_unit) }} <!-- Fallback to current price -->
+                        {% endif %}
+                    </td>
+                    <td>{{ item.karat }}</td>
+                    <td>{{ item.gold_type }}</td>
+                    <td>{{ item.weight }}</td>
+                    <td>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#editPriceModal"
+                           data-id="{{ item.id }}"
+                           data-price="{% if item.karat == '18K' and item.gold_type == 'Chinese Gold' %}
+                                           {{ prices.chinese_18k }}
+                                       {% elif item.karat == '21K' and item.gold_type == 'Chinese Gold' %}
+                                           {{ prices.chinese_21k }}
+                                       {% elif item.karat == '18K' and item.gold_type == 'Saudi Gold' %}
+                                           {{ prices.saudi_18k }}
+                                       {% elif item.karat == '21K' and item.gold_type == 'Saudi Gold' %}
+                                           {{ prices.saudi_21k }}
+                                       {% else %}
+                                           {{ "%.2f"|format(item.price_per_unit) }}  <!-- Fallback to current price if conditions aren't met -->
+                                       {% endif %}"
+                           class="price-link">
+                            <!-- Display price per gram based on gold type and karat -->
+                            ₱{% if item.karat == '18K' and item.gold_type == 'Chinese Gold' %}
+                                   {{ "%.2f"|format(prices.chinese_18k) }}
+                               {% elif item.karat == '21K' and item.gold_type == 'Chinese Gold' %}
+                                   {{ "%.2f"|format(prices.chinese_21k) }}
+                               {% elif item.karat == '18K' and item.gold_type == 'Saudi Gold' %}
+                                   {{ "%.2f"|format(prices.saudi_18k) }}
+                               {% elif item.karat == '21K' and item.gold_type == 'Saudi Gold' %}
+                                   {{ "%.2f"|format(prices.saudi_21k) }}
+                               {% else %}
+                                   {{ "%.2f"|format(item.price_per_unit) }}
+                               {% endif %}
+                        </a>
+                    </td>
+                    <td>{{ item.barcode }}</td>
+                    <td>
+                        <div class="actions">
+                            <!-- Edit Product Button -->
+                            <a href="{{ url_for('edit_product', product_id=item.id) }}" class="btn btn-warning btn-sm" data-bs-toggle="tooltip" title="Edit Product">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            
+                            <!-- Mark as Sold Form -->
+                            <form action="{{ url_for('mark_as_sold', product_id=item.id) }}" method="POST" style="display:inline;" data-bs-toggle="tooltip" title="Mark as Sold" onsubmit="return confirm('Are you sure you want to mark this product as sold?');">
+                                {{ form.hidden_tag() }}  <!-- CSRF Token included here -->
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </button>
+                            </form>
+                            
+                            <!-- Remove Product Form -->
+                            <form action="{{ url_for('remove_product', product_id=item.id) }}" method="POST" style="display:inline;" data-bs-toggle="tooltip" title="Remove Product" onsubmit="return confirm('Are you sure you want to remove this product?');">
+                                {{ form.hidden_tag() }}  <!-- CSRF Token included here -->
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Price Modal -->
+<div class="modal fade" id="editPriceModal" tabindex="-1" aria-labelledby="editPriceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Price per Gram</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('update_price') }}" method="POST" id="editPriceForm">
+                    {{ form.hidden_tag() }} <!-- CSRF Token included here -->
+                    <div class="mb-3">
+                        <label for="newPrice" class="form-label">New Price per Gram (₱)</label>
+                        <input type="number" class="form-control" id="newPrice" name="newPrice" step="0.01" required>
+                    </div>
+                    <input type="hidden" id="productId" name="productId">
+                    <button type="submit" class="btn btn-primary">Update Price</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="inventoryConfirmModal" tabindex="-1" aria-labelledby="inventoryConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Inventory Count</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Do you want to perform an inventory count?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                <button type="button" class="btn btn-primary" id="startInventoryCountBtn">Yes, Start Count</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inventory Tree Modal with Two Columns (Tree on the Left, Checklist on the Right) -->
+<div class="modal fade" id="inventoryTreeModal" tabindex="-1" aria-labelledby="inventoryTreeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Inventory Tree</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Left Column: Inventory Tree Structure -->
+                    <div class="col-md-8">
+                        <div class="accordion" id="inventoryTreeAccordion">
+                            {% for category, data in inventory_tree.items() %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading-category-{{ loop.index }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-category-{{ loop.index }}" aria-expanded="false" aria-controls="collapse-category-{{ loop.index }}">
+                                        {{ category }} ({{ data.count }} Products)
+                                    </button>
+                                </h2>
+                                <div id="collapse-category-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-category-{{ loop.index }}" data-bs-parent="#inventoryTreeAccordion">
+                                    <div class="accordion-body">
+                                        <div class="accordion" id="karatAccordion-{{ loop.index }}">
+                                            {% for karat, karat_data in data.karat.items() %}
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header" id="heading-karat-{{ loop.index }}">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-karat-{{ loop.index }}" aria-expanded="false" aria-controls="collapse-karat-{{ loop.index }}">
+                                                        {{ karat }} ({{ karat_data.count }} Products)
+                                                    </button>
+                                                </h2>
+                                                <div id="collapse-karat-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-karat-{{ loop.index }}" data-bs-parent="#karatAccordion-{{ loop.index }}">
+                                                    <div class="accordion-body">
+                                                        <ul class="list-group" style="font-size: 0.85rem;">
+                                                            {% for gold_type, gold_data in karat_data.gold_type.items() %}
+                                                            <li class="list-group-item">
+                                                                <strong>{{ gold_type }}</strong> ({{ gold_data.count }} Products)
+                                                                <ul class="list-group mt-2">
+                                                                    {% for product in gold_data['items'] %}
+                                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                        {{ product.product_name }} - Price: ₱{{ "%.2f"|format(product.price_per_unit) }} - Stock: {{ product.quantity }}
+                                                                        <span class="badge bg-primary rounded-pill">Size: {{ product.size }}</span>
+                                                                        <span class="badge bg-info rounded-pill">Weight: {{ product.weight }}</span>
+                                                                        <span class="badge bg-secondary rounded-pill">Barcode: {{ product.barcode }}</span>
+                                                                    </li>
+                                                                    {% endfor %}
+                                                                </ul>
+                                                            </li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Checklist for marking items as counted -->
+                    <div class="col-md-4">
+                        <h5>Mark as Counted</h5>
+                        {% for category, data in inventory_tree.items() %}
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="check-category-{{ loop.index }}" data-bs-toggle="tooltip" title="Mark category as counted">
+                            <label class="form-check-label" for="check-category-{{ loop.index }}">{{ category }}</label>
+                        </div>
+                        {% for karat, karat_data in data.karat.items() %}
+                        <div class="form-check mb-2 ms-3">
+                            <input type="checkbox" class="form-check-input" id="check-karat-{{ loop.index }}" data-bs-toggle="tooltip" title="Mark karat as counted">
+                            <label class="form-check-label" for="check-karat-{{ loop.index }}">{{ karat }}</label>
+                        </div>
+                        {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript to Handle Modal Population -->
+<script>
+// Edit Price Modal Population
+var editPriceModal = document.getElementById('editPriceModal');
+editPriceModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var productId = button.getAttribute('data-id');
+    var currentPrice = button.getAttribute('data-price');
+
+    var modalTitle = editPriceModal.querySelector('.modal-title');
+    var newPriceInput = editPriceModal.querySelector('#newPrice');
+    var productIdInput = editPriceModal.querySelector('#productId');
+
+    modalTitle.textContent = 'Edit Price per Gram for Product ID ' + productId;
+    newPriceInput.value = currentPrice;
+    productIdInput.value = productId;
+});
+
+// Inventory Tree Button Click
+document.getElementById('inventoryTreeBtn').addEventListener('click', function() {
+    const inventoryConfirmModal = new bootstrap.Modal(document.getElementById('inventoryConfirmModal'), {});
+    inventoryConfirmModal.show();
+});
+
+// Start Inventory Count Button Click
+document.getElementById('startInventoryCountBtn').addEventListener('click', function() {
+    const inventoryConfirmModal = bootstrap.Modal.getInstance(document.getElementById('inventoryConfirmModal'));
+    inventoryConfirmModal.hide();
+    const inventoryTreeModal = new bootstrap.Modal(document.getElementById('inventoryTreeModal'), {});
+    inventoryTreeModal.show();
+});
+</script>
+
+<!-- Include Bootstrap JS (ensure it's included after your other scripts) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

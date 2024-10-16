@@ -1,0 +1,16 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+    Product Details
+{% endblock %}
+
+{% block content %}
+<h1>{{ product.product_name }}</h1>
+<p>Category: {{ product.category }}</p>
+<p>Karat: {{ product.karat }}</p>
+<p>Gold Type: {{ product.gold_type }}</p>
+<p>Weight Range: {{ product.weight }}</p>
+<p>Size: {{ product.size }}</p>
+<p>Price: {{ product.price_per_unit }}</p>
+<img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.product_name }}" />
+{% endblock %}

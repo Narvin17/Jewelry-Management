@@ -1,0 +1,50 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Dashboard
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">Welcome to the Jewelry Management Dashboard</h4>
+                    <p class="card-text">Manage your inventory, sales, and expenses easily from this dashboard.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Inventory</h5>
+                    <p class="card-text">Manage your products, check stock, and update details.</p>
+                    <a href="{{ url_for('inventory') }}" class="btn btn-primary">Go to Inventory</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Sold Products</h5>
+                    <p class="card-text">Track sales performance and analyze revenue.</p>
+                    <a href="{{ url_for('sold_product') }}" class="btn btn-success">View Sold Products</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Expenses</h5>
+                    <p class="card-text">Monitor expenses and manage cost effectively.</p>
+                    <a href="{{ url_for('expenses') }}" class="btn btn-warning">Check Expenses</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

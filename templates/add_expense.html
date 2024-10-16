@@ -1,0 +1,42 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Add Expense
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <form method="POST" action="{{ url_for('add_expense') }}" class="needs-validation" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.supplier.label(class="form-label") }}
+            {{ form.supplier(class="form-control", placeholder="Enter supplier name") }}
+            {% for error in form.supplier.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.price_per_gram.label(class="form-label") }}
+            {{ form.price_per_gram(class="form-control", placeholder="Enter price per gram") }}
+            {% for error in form.price_per_gram.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.total_weight.label(class="form-label") }}
+            {{ form.total_weight(class="form-control", placeholder="Enter total weight") }}
+            {% for error in form.total_weight.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
+            {{ form.time_bought.label(class="form-label") }}
+            {{ form.time_bought(class="form-control", placeholder="Enter time bought (YYYY-MM-DD)") }}
+            {% for error in form.time_bought.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('add_expense') }}" class="btn btn-primary mb-3">Add Expense</a>
+    </form>
+</div>
+{% endblock %}

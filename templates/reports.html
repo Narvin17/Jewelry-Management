@@ -1,0 +1,55 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+Reports Overview
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <!-- Sales Report -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Sales Report</h5>
+                    <p class="card-text">View detailed sales data, including daily, weekly, monthly, and yearly reports.</p>
+                    <a href="{{ url_for('sales_report') }}" class="btn btn-primary">View Sales Report</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Report -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Inventory Report</h5>
+                    <p class="card-text">Track inventory levels and see low-stock alerts.</p>
+                    <a href="{{ url_for('inventory_report') }}" class="btn btn-primary">View Inventory Report</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Report -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Customer Report</h5>
+                    <p class="card-text">See your top customers and analyze their purchase trends.</p>
+                    <a href="{{ url_for('customer_report') }}" class="btn btn-primary">View Customer Report</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Report -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Financial Report</h5>
+                    <p class="card-text">Analyze income, expenses, and profit/loss.</p>
+                    <a href="{{ url_for('financial_report') }}" class="btn btn-primary">View Financial Report</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
