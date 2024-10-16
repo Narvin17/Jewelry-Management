@@ -9,7 +9,7 @@
     }
   },
   "functions": {
-    "api/**/*.py": {
+    "functions/**/*.py": {
       "runtime": "vercel-python@1.0.0"
     }
   }
