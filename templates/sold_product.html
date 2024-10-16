@@ -24,53 +24,51 @@ Sales Records
                 </tr>
             </thead>
             <tbody>
-                {% for sale in sales %}
-                <tr>
-                    <td>{{ sale.product_name }}</td>
-                    <td>{{ sale.category }}</td>
-                    <td>{{ sale.weight }}</td>
-                    <td>
-                        <!-- Calculate and display price per gram -->
-                        {% set price_per_gram = 0 %}
-                        {% if sale.karat == '18K' and sale.gold_type == 'Chinese Gold' %}
-                            {% set price_per_gram = prices.chinese_18k %}
-                        {% elif sale.karat == '21K' and sale.gold_type == 'Chinese Gold' %}
-                            {% set price_per_gram = prices.chinese_21k %}
-                        {% elif sale.karat == '18K' and sale.gold_type == 'Saudi Gold' %}
-                            {% set price_per_gram = prices.saudi_18k %}
-                        {% elif sale.karat == '21K' and sale.gold_type == 'Saudi Gold' %}
-                            {% set price_per_gram = prices.saudi_21k %}
-                        {% else %}
-                            {% set price_per_gram = (sale.total_price / sale.weight) | round(2) %}
-                        {% endif %}
-                        ₱{{ price_per_gram }}
-                    </td>
-                    <td>
-                        <!-- Calculate and display total price -->
-                        {% if price_per_gram %}
-                            ₱{{ (price_per_gram * sale.weight) | round(2) }}
-                        {% else %}
-                            ₱{{ sale.total_price }}
-                        {% endif %}
-                    </td>
-                    <td>{{ sale.karat }}</td>
-                    <td>{{ sale.gold_type }}</td>
-                    <td>{{ sale.size }}</td>
-                    <td>{{ sale.barcode }}</td>
-                    <td>{{ sale.date_sold.strftime('%Y-%m-%d') }}</td>
-                    <td>
-                        <a href="{{ url_for('view_sold_product', sale_id=sale.id) }}" class="btn btn-info btn-sm">View</a>
-                        <form action="{{ url_for('void_sale', sale_id=sale.id) }}" method="POST" style="display:inline;" onsubmit="return confirmVoid();">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-danger btn-sm">Void</button>
-                        </form>                        
-                    </td>
-                </tr>
+                {% if sales %}
+                    {% for sale in sales %}
+                    <tr>
+                        <td>{{ sale.product_name or 'N/A' }}</td>
+                        <td>{{ sale.category or 'N/A' }}</td>
+                        <td>{{ sale.weight or 'N/A' }}</td>
+                        <td>
+                            {% set price_per_gram = 0 %}
+                            {% if sale.karat == '18K' and sale.gold_type == 'Chinese Gold' %}
+                                {% set price_per_gram = prices.chinese_18k %}
+                            {% elif sale.karat == '21K' and sale.gold_type == 'Chinese Gold' %}
+                                {% set price_per_gram = prices.chinese_21k %}
+                            {% elif sale.karat == '18K' and sale.gold_type == 'Saudi Gold' %}
+                                {% set price_per_gram = prices.saudi_18k %}
+                            {% elif sale.karat == '21K' and sale.gold_type == 'Saudi Gold' %}
+                                {% set price_per_gram = prices.saudi_21k %}
+                            {% elif sale.total_price is not none and sale.weight > 0 %}
+                                {% set price_per_gram = (sale.total_price / sale.weight) | round(2) %}
+                            {% endif %}
+                            ₱{{ price_per_gram }}
+                        </td>
+                        <td>
+                            ₱{{ (price_per_gram * sale.weight) | round(2) if sale.weight else sale.total_price or 'N/A' }}
+                        </td>
+                        <td>{{ sale.karat or 'N/A' }}</td>
+                        <td>{{ sale.gold_type or 'N/A' }}</td>
+                        <td>{{ sale.size or 'N/A' }}</td>
+                        <td>{{ sale.barcode or 'N/A' }}</td>
+                        <td>{{ sale.date_sold.strftime('%Y-%m-%d') if sale.date_sold else 'N/A' }}</td>
+                        <td>
+                            {% if sale.id is not none %}
+                                <a href="{{ url_for('view_sold_product', sale_id=sale.id) }}" class="btn btn-info btn-sm">View</a>
+                                <form action="{{ url_for('void_sale', sale_id=sale.id) }}" method="POST" style="display:inline;" onsubmit="return confirmVoid();">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Void</button>
+                                </form>                        
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
                 {% else %}
-                <tr>
-                    <td colspan="12" class="text-center">No sales records available.</td>
-                </tr>
-                {% endfor %}
+                    <tr>
+                        <td colspan="11" class="text-center">No sales records available.</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
@@ -82,13 +80,12 @@ Sales Records
         const userInput = prompt(`To void this sale, please type "${confirmationText}" exactly:`);
 
         if (userInput === null) {
-            // User pressed cancel
             return false;
         }
 
         if (userInput !== confirmationText) {
             alert("Incorrect confirmation. The sale will not be voided.");
-            return false; // Prevent the form from submitting
+            return false;
         }
 
         return confirm("Are you absolutely sure you want to void this sale? This action cannot be undone.");

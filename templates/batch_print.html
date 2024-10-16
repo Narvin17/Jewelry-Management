@@ -1,0 +1,81 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+<h1 class="fw-bold text-center mt-4">Batch Print Products</h1>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center">Products to Print</h2>
+    
+    <div class="text-center mb-4">
+        <button class="btn btn-primary" onclick="printStickers()">Print Stickers</button>
+    </div>
+
+    <div class="sticker-container" style="display: flex; flex-wrap: wrap; justify-content: center;">
+        {% for product in products %}
+        <div class="sticker" style="width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center;">
+            <div style="font-weight: bold;">{{ product.barcode }}</div>
+            <div style="font-weight: bold;">{{ product.product_name }} | {{ product.weight }}g | {{ product.size }}</div>
+            <div>{{ product.karat }} | {{ product.gold_type }} | {{ product.category }}</div>
+        </div>
+        {% if loop.index % 10 == 0 %}
+            <div style="flex-basis: 100%; height: 0;"></div> <!-- Break line after 10 stickers -->
+        {% endif %}
+        {% endfor %}
+        {% if products|length < 60 %}
+            {% for _ in range(60 - products|length) %}
+            <div class="sticker" style="width: 1.5in; height: 0.5in; border: 1px dashed #ccc; margin: 2px; padding: 2px; font-size: 8px; text-align: center; visibility: hidden;">
+                <div style="font-weight: bold;">Placeholder</div>
+                <div style="font-weight: bold;">N/A</div>
+                <div>N/A</div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function printStickers() {
+    const printWindow = window.open('', '_blank', 'width=600,height=400');
+    const stickers = document.querySelectorAll('.sticker-container .sticker');
+    
+    let content = '<html><head><title>Print Stickers</title>';
+    content += '<style>.sticker { width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center; display: inline-block; }</style>';
+    content += '</head><body style="display: flex; flex-wrap: wrap; justify-content: center;">';
+    
+    stickers.forEach(sticker => {
+        content += sticker.outerHTML;
+    });
+
+    content += '</body></html>';
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.print();
+
+    // Optionally, send an AJAX request to update the printed status
+    const productIds = Array.from(stickers).map(sticker => {
+        return sticker.querySelector('div').textContent; // Adjust to get the correct product ID
+    });
+
+    fetch('/update_printed_status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'  // Include CSRF token for security
+        },
+        body: JSON.stringify({ product_ids: productIds })
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    }).then(data => {
+        console.log(data.message); // Handle success message
+    }).catch((error) => {
+        console.error('Error:', error);
+    });
+}
+</script>
+
+{% endblock %}

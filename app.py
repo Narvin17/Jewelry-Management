@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session
 from models.database import db, Inventory, SoldProduct, Expense, User
 from forms.forms import AddProductForm, EditProductForm, AddExpenseForm, LoginForm, GoldPricesForm
 from flask_login import (
@@ -22,6 +22,7 @@ import string
 
 from dotenv import load_dotenv
 load_dotenv()
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jewelry_app.db'
@@ -68,11 +69,11 @@ if os.getenv('FLASK_ENV') == 'production':
             'data:',
         ],
     }
-    # Initialize Talisman with CSP
-    Talisman(app, content_security_policy=csp, force_https=True)
+    # Initialize Talisman with CSP in production
+    talisman = Talisman(app, content_security_policy=csp, force_https=True)
 else:
     # Initialize Talisman without enforcing HTTPS in development
-    Talisman(app, content_security_policy=None, force_https=False)
+    talisman = Talisman(app, content_security_policy=None, force_https=False)
 
 # CSRF Error handler
 @app.errorhandler(CSRFError)
@@ -80,7 +81,12 @@ def handle_csrf_error(e):
     flash('The form you submitted is invalid or has expired. Please try again.', 'error')
     return redirect(request.referrer or url_for('inventory')), 400
 
-# Other routes and logic...
+@app.template_filter('float')
+def float_filter(value):
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0  # or return None, depending on your logic
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -552,26 +558,31 @@ def add_product():
             for _ in range(form.quantity.data):
                 barcode_value = generate_barcode(form.category.data, form.karat.data, form.gold_type.data)
                 new_product = Inventory(
-                    product_name=form.product_name.data,
-                    category=form.category.data,
-                    quantity=1,
-                    price_per_unit=price_per_unit,
-                    karat=form.karat.data,
-                    gold_type=form.gold_type.data,
-                    weight=form.weight.data,  # Store the weight
-                    size=form.size.data,
-                    barcode=barcode_value,
-                    image_url=photo_path  # Save the path to the image
-                )
+                        product_name=form.product_name.data,
+                        category=form.category.data,
+                        quantity=1,
+                        price_per_unit=price_per_unit,
+                        karat=form.karat.data,
+                        gold_type=form.gold_type.data,
+                        weight=form.weight.data,
+                        size=form.size.data,
+                        barcode=barcode_value,
+                        image_url=photo_path,
+                        printed=False  # Set printed to False for new products
+                    )
                 db.session.add(new_product)
 
         try:
             db.session.commit()
 
+            # If a new product was created, generate the barcode
             if not existing_product:
                 barcode_path = os.path.join('static', 'barcodes', f"{barcode_value}.png")
                 code128 = Code128(barcode_value, writer=ImageWriter())
                 code128.save(barcode_path)
+
+                # Redirect to the new product details page
+                return redirect(url_for('new_product', product_id=new_product.id))
 
             flash(f"{form.quantity.data} units of '{form.product_name.data}' added successfully!", "success")
             return redirect(url_for('inventory'))
@@ -585,6 +596,42 @@ def add_product():
 
     return render_template('add_product.html', form=form, warning_message=warning_message)
 
+@app.route('/products', methods=['GET'])
+@login_required
+def products():
+    # Fetch unprinted products from the database
+    unprinted_products = Inventory.query.filter_by(printed=False).all()
+    return render_template('products.html', products=unprinted_products)
+
+@app.route('/update_printed_status', methods=['POST'])
+@login_required
+def update_printed_status():
+    data = request.get_json()
+    product_ids = data.get('product_ids', [])
+    
+    try:
+        for product_id in product_ids:
+            product = Inventory.query.get(product_id)
+            if product:
+                product.printed = True  # Set printed to True
+        db.session.commit()
+        return jsonify({"message": "Printed status updated successfully."}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 400
+    
+@app.route('/batch_print', methods=['POST'])
+@login_required
+def batch_print():
+    # Fetch unprinted products from the database
+    unprinted_products = Inventory.query.filter_by(printed=False).all()
+    
+    if not unprinted_products:
+        flash('No unprinted products available for printing.', 'info')
+        return jsonify({"message": "No unprinted products available."}), 404
+
+    # Render the template for printing (you can customize this as needed)
+    return render_template('print_batch.html', products=unprinted_products)
 
 # Route to edit product details (available to admin and staff)
 @app.route('/edit_product/<int:product_id>', methods=['GET', 'POST'])
@@ -664,11 +711,18 @@ def mark_as_sold(product_id):
 
     return redirect(url_for('inventory'))
 
-# Route for viewing sales record
 @app.route('/sold_product', methods=['GET'])
 @login_required
 def sold_product():
     sales_data = SoldProduct.query.all()
+    
+    # Debugging: log the sales data
+    if not sales_data:
+        app.logger.debug("No sales records found.")
+    else:
+        # Check for None entries
+        sales_data = [sale for sale in sales_data if sale is not None]
+
     # Retrieve gold prices from session or use default values if not set
     gold_prices = session.get('gold_prices', {
         'chinese_18k': 0,
@@ -677,6 +731,8 @@ def sold_product():
         'saudi_21k': 0
     })
     return render_template('sold_product.html', sales=sales_data, prices=gold_prices)
+
+
 
 # Route to view individual sold product details
 @app.route('/sold_product/<int:sale_id>', methods=['GET'])

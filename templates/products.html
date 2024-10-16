@@ -1,0 +1,146 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+<h1 class="fw-bold text-center mt-4">Products</h1>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center">Products Overview</h2>
+
+    <div class="text-center mb-4">
+        <button class="btn btn-primary" onclick="batchPrint()">Batch Print All</button>
+    </div>
+
+    <h4 class="text-center">Unprinted Products</h4>
+    <div class="sticker-container" style="display: flex; flex-wrap: wrap; justify-content: center;">
+        {% for product in products %}
+        {% if not product.printed %}
+        <div class="sticker" style="width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center;">
+            <div style="font-weight: bold;">{{ product.barcode }}</div>
+            <div style="font-weight: bold;">{{ product.product_name }} | {{ product.weight }}g | {{ product.size }}</div>
+            <div>{{ product.karat }} | {{ product.gold_type }} | {{ product.category }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <h4 class="mt-4 text-center">Printed Products</h4>
+    <div class="sticker-container" style="display: flex; flex-wrap: wrap; justify-content: center;">
+        {% for product in products %}
+        {% if product.printed %}
+        <div class="sticker" style="width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center;">
+            <div style="font-weight: bold;">{{ product.barcode }}</div>
+            <div style="font-weight: bold;">{{ product.product_name }} | {{ product.weight }}g | {{ product.size }}</div>
+            <div>{{ product.karat }} | {{ product.gold_type }} | {{ product.category }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <table class="table table-bordered table-striped mt-4">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Weight (grams)</th>
+                <th>Karat</th>
+                <th>Gold Type</th>
+                <th>Barcode</th>
+                <th>Printed Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in products %}
+            <tr>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.weight }}</td>
+                <td>{{ item.karat }}</td>
+                <td>{{ item.gold_type }}</td>
+                <td>{{ item.barcode }}</td>
+                <td>
+                    {% if item.printed %}
+                        <span class="text-success" title="Printed">&#x2714;</span>
+                    {% else %}
+                        <span class="text-danger" title="Not Printed">&#x2716;</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not item.printed %}
+                    <button class="btn btn-info btn-sm print-btn" data-product-id="{{ item.id }}" title="Print Product">
+                        <i class="fas fa-print"></i>
+                    </button>                    
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Attach click event to all buttons with the class 'print-btn'
+    const printButtons = document.querySelectorAll('.print-btn');
+    printButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const productId = this.getAttribute('data-product-id');
+            confirmPrint(productId);
+        });
+    });
+});
+function confirmPrint(productId) {
+    const confirmAction = confirm("Are you sure you want to print this product?");
+    if (confirmAction) {
+        // Send AJAX request to update printed status
+        fetch('/update_printed_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ product_ids: [productId] })
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        }).then(data => {
+            console.log(data.message); // Handle success message
+            location.reload(); // Reload the page to update printed status
+        }).catch((error) => {
+            console.error('Error:', error);
+        });
+    }
+}
+
+function batchPrint() {
+    // Logic for batch printing goes here
+    const productIds = Array.from(document.querySelectorAll('.sticker-container .sticker')).map(sticker => {
+        return sticker.querySelector('div').textContent; // Adjust this to get the correct product ID
+    });
+
+    fetch('/update_printed_status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ product_ids: productIds })
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    }).then(data => {
+        console.log(data.message); // Handle success message
+        location.reload(); // Reload the page to update printed status
+    }).catch((error) => {
+        console.error('Error:', error);
+    });
+}
+</script>
+
+{% endblock %}

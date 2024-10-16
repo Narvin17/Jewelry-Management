@@ -3,7 +3,6 @@ from wtforms import HiddenField, StringField, SelectField, IntegerField, FloatFi
 from wtforms.validators import DataRequired, NumberRange
 from flask_wtf.file import FileRequired, FileAllowed
 
-
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
@@ -34,6 +33,7 @@ class AddProductForm(FlaskForm):
         FileRequired(message='Product photo is required.'),
         FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Only image files are allowed!')
     ])
+    submit = SubmitField('Add Product')
 
 class EditProductForm(FlaskForm):
     product_name = StringField('Product Name', validators=[DataRequired()])
@@ -44,7 +44,7 @@ class EditProductForm(FlaskForm):
         ('Pendant', 'Pendant'),
         ('Bracelet', 'Bracelet')
     ], validators=[DataRequired()])
-    quantity = IntegerField('Quantity', validators=[DataRequired(), NumberRange(min=1)])  # Ensure this is included
+    quantity = IntegerField('Quantity', validators=[DataRequired(), NumberRange(min=1)]) 
     karat = SelectField('Karat', choices=[
         ('18K', '18K'),
         ('21K', '21K')
@@ -53,13 +53,15 @@ class EditProductForm(FlaskForm):
         ('Chinese Gold', 'Chinese Gold'),
         ('Saudi Gold', 'Saudi Gold')
     ], validators=[DataRequired()])
-    weight = StringField('Weight (grams)', validators=[DataRequired()])  # Include this if required
+    weight = StringField('Weight (grams)', validators=[DataRequired()]) 
+    submit = SubmitField('Update Product')
 
 class AddExpenseForm(FlaskForm):
     supplier = StringField('Supplier', validators=[DataRequired()])
     price_per_gram = FloatField('Price per Gram', validators=[DataRequired()])
     total_weight = FloatField('Total Weight', validators=[DataRequired()])
     time_bought = StringField('Time Bought', validators=[DataRequired()])
+    submit = SubmitField('Add Expense')
 
 class GoldPricesForm(FlaskForm):
     chinese_18k = DecimalField('Chinese 18K Price per Gram (₱)', validators=[

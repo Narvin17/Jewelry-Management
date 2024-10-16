@@ -1,47 +1,33 @@
 from flask_sqlalchemy import SQLAlchemy
-from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField, FloatField, SelectField
-from wtforms.validators import DataRequired, NumberRange
-from datetime import datetime
 from flask_login import UserMixin
+from datetime import datetime
 from flask import session
-import os
-
 
 db = SQLAlchemy()
 
-class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY')
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
-    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER')
-    MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))
-
-# User table with roles and login integration
-class User(db.Model, UserMixin):
-    __tablename__ = 'user'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)  # Store hashed passwords
-    role = db.Column(db.String(20), nullable=False)  # Can be 'admin', 'staff', or 'guest'
-
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-# Inventory table for tracking jewelry items
-class Inventory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+class BaseProduct(db.Model):
+    __abstract__ = True  # This ensures the class is not created as a separate table
+    id = db.Column(db.Integer, primary_key=True)  # Add a primary key here
     product_name = db.Column(db.String(100), nullable=False)
     category = db.Column(db.String(50), nullable=False)
+    weight = db.Column(db.Float, nullable=False)
+    karat = db.Column(db.String(20), nullable=False)
+    gold_type = db.Column(db.String(50), nullable=False)
+    size = db.Column(db.String(20), nullable=True, default='N/A')
+    barcode = db.Column(db.String(50), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Product {self.product_name}>"
+
+class Inventory(BaseProduct):
+    __tablename__ = 'inventory'
+
     quantity = db.Column(db.Integer, nullable=False)
     price_per_unit = db.Column(db.Float, nullable=False)
     price_per_gram = db.Column(db.Float, nullable=True)
-    karat = db.Column(db.String(20), nullable=False)
-    gold_type = db.Column(db.String(50), nullable=False)
-    weight = db.Column(db.Float, nullable=False)  # Weight of the item in grams
-    size = db.Column(db.String(20), nullable=False)
-    barcode = db.Column(db.String(50), unique=True, nullable=False)
     image_url = db.Column(db.String(200))  # URL for product image
+    printed = db.Column(db.Boolean, default=False)  # New column to track if printed
+
 
     def calculate_price_per_unit(self):
         """Calculate price per unit based on weight and price per gram."""
@@ -57,33 +43,16 @@ class Inventory(db.Model):
         else:
             return 0
 
-    def __repr__(self):
-        return f"<Inventory {self.product_name}>"
-
-
-# SoldProduct table for tracking sold items
-class SoldProduct(db.Model):
+class SoldProduct(BaseProduct):
     __tablename__ = 'sold_product'
 
-    id = db.Column(db.Integer, primary_key=True)
-    product_name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50), nullable=False)
     quantity_sold = db.Column(db.Integer, nullable=False)
     total_price = db.Column(db.Float, nullable=False)
     date_sold = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    karat = db.Column(db.String(20), nullable=False)
-    gold_type = db.Column(db.String(50), nullable=False)
-    weight = db.Column(db.Float, nullable=False)  # Add this line
-    size = db.Column(db.String(20), nullable=True, default='N/A')
-    barcode = db.Column(db.String(50), unique=True, nullable=False)
-
-    def __repr__(self):
-        return f"<SoldProduct {self.product_name}>"  # Set nullable=True and provide default value
 
     def __repr__(self):
         return f"<SoldProduct {self.product_name}>"
 
-# Expense table for tracking business expenses
 class Expense(db.Model):
     __tablename__ = 'expense'
 
@@ -96,3 +65,15 @@ class Expense(db.Model):
 
     def __repr__(self):
         return f"<Expense {self.supplier}>"
+
+# User model for authentication
+class User(db.Model, UserMixin):
+    __tablename__ = 'user'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)  # Store hashed passwords
+    role = db.Column(db.String(20), nullable=False)  # Can be 'admin', 'staff', or 'guest'
+
+    def __repr__(self):
+        return f'<User {self.username}>'
