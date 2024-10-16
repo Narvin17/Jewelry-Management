@@ -1,9 +1,7 @@
 from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session
 from models.database import db, Inventory, SoldProduct, Expense, User
 from forms.forms import AddProductForm, EditProductForm, AddExpenseForm, LoginForm, GoldPricesForm
-from flask_login import (
-    LoginManager, login_user, login_required, logout_user, current_user
-)
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_migrate import Migrate
 from datetime import datetime
 from barcode.writer import ImageWriter
@@ -15,25 +13,23 @@ from sqlalchemy import func
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from flask_talisman import Talisman
-
 import os
 import random
 import string
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
-
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql+pg8000://postgres:castro12@localhost/jewelry_management')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql+pg8000://postgres:password@localhost/jewelry_management')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # Loaded from .env
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/images')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
 
-app.config['SESSION_COOKIE_SECURE'] = True       # Only send cookies over HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True     # Prevent JavaScript from accessing cookies
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'    # Helps protect against CSRF
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 csrf = CSRFProtect(app)
 db.init_app(app)
@@ -44,37 +40,17 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Define Content Security Policy (CSP) and Talisman initialization
+# Initialize Talisman for security headers
 if os.getenv('FLASK_ENV') == 'production':
-    # Define CSP and enforce HTTPS in production
     csp = {
-        'default-src': [
-            '\'self\'',
-            'https://cdnjs.cloudflare.com',
-            'https://cdn.jsdelivr.net',
-        ],
-        'script-src': [
-            '\'self\'',
-            'https://cdnjs.cloudflare.com',
-            'https://cdn.jsdelivr.net',
-        ],
-        'style-src': [
-            '\'self\'',
-            '\'unsafe-inline\'',
-            'https://cdnjs.cloudflare.com',
-            'https://cdn.jsdelivr.net',
-        ],
-        'img-src': [
-            '\'self\'',
-            'data:',
-        ],
+        'default-src': ['\'self\'', 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net'],
+        'script-src': ['\'self\'', 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net'],
+        'style-src': ['\'self\'', '\'unsafe-inline\'', 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net'],
+        'img-src': ['\'self\'', 'data:'],
     }
-    # Initialize Talisman with CSP in production
     talisman = Talisman(app, content_security_policy=csp, force_https=True)
 else:
-    # Initialize Talisman without enforcing HTTPS in development
     talisman = Talisman(app, content_security_policy=None, force_https=False)
-
 # CSRF Error handler
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
@@ -139,10 +115,11 @@ def login():
 @app.route('/create_user', methods=['GET', 'POST'])
 @login_required  # Ensure the user is logged in
 def create_user():
+    # Only allow admins to access the page
     if current_user.role != 'admin':
         flash('Access denied. Only admins can create new users.', 'error')
         return redirect(url_for('dashboard'))
-
+    
     if request.method == 'POST':
         username = request.form.get('username').strip()
         password = request.form.get('password').strip()
@@ -181,7 +158,6 @@ def create_user():
             return redirect(url_for('create_user'))
 
     return render_template('create_user.html')
-
 
 # Route for logout
 @app.route('/logout')
@@ -881,6 +857,6 @@ def reports_dashboard():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # This creates all the tables defined in your models
+        db.create_all()  # This will create the tables based on the models
     app.run(debug=True)
 
