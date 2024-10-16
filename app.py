@@ -25,7 +25,7 @@ load_dotenv()
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jewelry_app.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql+pg8000://postgres:castro12@localhost/jewelry_management')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # Loaded from .env
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/images')
@@ -139,11 +139,10 @@ def login():
 @app.route('/create_user', methods=['GET', 'POST'])
 @login_required  # Ensure the user is logged in
 def create_user():
-    # Only allow admins to access the page
     if current_user.role != 'admin':
         flash('Access denied. Only admins can create new users.', 'error')
         return redirect(url_for('dashboard'))
-    
+
     if request.method == 'POST':
         username = request.form.get('username').strip()
         password = request.form.get('password').strip()
@@ -182,6 +181,7 @@ def create_user():
             return redirect(url_for('create_user'))
 
     return render_template('create_user.html')
+
 
 # Route for logout
 @app.route('/logout')
@@ -880,4 +880,7 @@ def reports_dashboard():
     return render_template('reports.html')
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # This creates all the tables defined in your models
     app.run(debug=True)
+
