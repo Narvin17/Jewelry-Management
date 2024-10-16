@@ -1,9 +1,20 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/app.py", "use": "@vercel/python" }
+    {
+      "src": "app.py",
+      "use": "@vercel/python"
+    }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "api/app.py" }
-  ]
+    {
+      "src": "/(.*)",
+      "dest": "app.py"
+    }
+  ],
+  "env": {
+    "SQLALCHEMY_DATABASE_URI": "postgresql+pg8000://postgres:castro12@localhost:5432/jewelry_management",
+    "SECRET_KEY": "@NarvinTomSampanCastro0917",
+    "UPLOAD_FOLDER": "static/images"
+  }
 }
