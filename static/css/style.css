@@ -315,16 +315,10 @@ td:last-child {
 
     footer {
         width: 100%;
-        position: relative;
     }
 
     .card {
         width: 100%;
         margin-bottom: 10px;
-    }
-
-    .actions {
-        flex-direction: column;
-        gap: 3px;
     }
 }

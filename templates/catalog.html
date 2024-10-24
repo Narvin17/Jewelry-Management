@@ -1,100 +1,112 @@
 {% extends 'layout.html' %}
 
 {% block header %}
-<div class="container d-flex align-items-center justify-content-between" style="padding: 0; margin-top: 0;">
+<div class="container" style="padding: 0; margin-top: -10px;">
     <!-- Catalog Heading -->
-    <div class="d-flex align-items-center">
-        <h1 class="fw-bold" style="font-size: 2.5rem; text-transform: uppercase; margin: 0;">
-            Catalog
-        </h1>
-        <p style="font-size: 1.1rem; margin-left: 20px; margin-bottom: 0; font-style: italic; color: #6c757d;">
-            Affordable Elegance, Crafted with Precision. Invest now.
-        </p>
+    <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <h1 class="fw-bold" style="font-size: 2.5rem; text-transform: uppercase; margin: 0;">
+                Catalog
+            </h1>
+            <!-- Catalog Motto -->
+            <p style="font-size: 1.1rem; margin-left: 5px; margin-bottom: 0; font-style: italic; color: #6c757d;">
+                Affordable Elegance, Crafted with Precision. Invest now.
+            </p>
+        </div>
+
+        <!-- Price Per Gram Section -->
+        <div class="d-flex flex-column align-items-end" style="font-size: 0.9rem;">
+            <div class="p-3" style="border: 1px solid #dee2e6; border-radius: 8px; background-color: #f8f9fa; max-width: 500px;">
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex mb-2">
+                        <span style="flex-grow: 1;text-align: right;">Chinese 18K:</span>
+                        <strong class="text-success" style="margin-right: 50px;">₱{{ prices.chinese_18k }}</strong>
+                        <span style="flex-grow: 1; text-align: right;">Saudi 18K:</span>
+                        <strong class="text-success">₱{{ prices.saudi_18k }}</strong>
+                    </li>
+                    <li class="d-flex mb-2">
+                        <span style="flex-grow: 1;text-align: right;">Chinese 21K:</span>
+                        <strong class="text-success" style="margin-right: 50px;">₱{{ prices.chinese_21k }}</strong>
+                        <span style="flex-grow: 1; text-align: right;">Saudi 21K:</span>
+                        <strong class="text-success">₱{{ prices.saudi_21k }}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 
-    <!-- Price Per Gram Section -->
-    <div class="d-flex flex-column align-items-end" style="font-size: 0.9rem;">
-        <div class="p-3" style="border: 1px solid #dee2e6; border-radius: 8px; background-color: #f8f9fa; max-width: 500px;">
-            <ul class="list-unstyled mb-0">
-                <li class="d-flex mb-2">
-                    <span style="flex-grow: 1;text-align: right;">Chinese 18K:</span>
-                    <strong class="text-success" style="margin-right: 50px;">₱{{ prices.chinese_18k }}</strong>
-                    <span style="flex-grow: 1; text-align: right;">Saudi 18K:</span>
-                    <strong class="text-success">₱{{ prices.saudi_18k }}</strong>
-                </li>
-                <li class="d-flex mb-2">
-                    <span style="flex-grow: 1;text-align: right;">Chinese 21K:</span>
-                    <strong class="text-success" style="margin-right: 50px;">₱{{ prices.chinese_21k }}</strong>
-                    <span style="flex-grow: 1; text-align: right;">Saudi 21K:</span>
-                    <strong class="text-success">₱{{ prices.saudi_21k }}</strong>
-                </li>
-            </ul>
-        </div>
+    <!-- Search Field -->
+    <div class="d-flex justify-content-start my-2">
+        <input type="text" name="search_query" class="form-control form-control-sm" placeholder="Search by Name" value="{{ search_query }}" style="max-width: 400px;">
     </div>
 </div>
 {% endblock %}
 
 {% block content %}
 <!-- Filters and Catalog Items Group -->
-<form class="d-flex justify-content-between mb-4" action="{{ url_for('catalog') }}" method="GET">
-    <!-- Category Filter -->
-    <div>
-        <select name="category" class="form-select">
-            <option value="all" {% if category == 'all' %}selected{% endif %}>All Categories</option>
-            {% for cat in categories %}
-                <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
-            {% endfor %}
-        </select>
-    </div>
+<div class="container py-4">
+    <form class="row g-1 align-items-center" action="{{ url_for('catalog') }}" method="GET" style="font-size: 0.85rem;">
+        <!-- Category Filter -->
+        <div class="col-lg-2 col-md-2">
+            <select name="category" class="form-select form-select-sm">
+                <option value="all" {% if category == 'all' %}selected{% endif %}>All Categories</option>
+                {% for cat in categories %}
+                    <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <!-- Karat Filter -->
-    <div>
-        <select name="karat" class="form-select">
-            <option value="all" {% if karat == 'all' %}selected{% endif %}>All Karats</option>
-            {% for karat_option in karats %}
-                <option value="{{ karat_option }}" {% if karat == karat_option %}selected{% endif %}>{{ karat_option }}</option>
-            {% endfor %}
-        </select>
-    </div>
+        <!-- Karat Filter -->
+        <div class="col-lg-2 col-md-2">
+            <select name="karat" class="form-select form-select-sm">
+                <option value="all" {% if karat == 'all' %}selected{% endif %}>All Karats</option>
+                {% for karat_option in karats %}
+                    <option value="{{ karat_option }}" {% if karat == karat_option %}selected{% endif %}>{{ karat_option }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <!-- Gold Type Filter -->
-    <div>
-        <select name="gold_type" class="form-select">
-            <option value="all" {% if gold_type == 'all' %}selected{% endif %}>All Gold Types</option>
-            {% for gold in gold_types %}
-                <option value="{{ gold }}" {% if gold_type == gold %}selected{% endif %}>{{ gold }}</option>
-            {% endfor %}
-        </select>
-    </div>
+        <!-- Gold Type Filter -->
+        <div class="col-lg-2 col-md-2">
+            <select name="gold_type" class="form-select form-select-sm">
+                <option value="all" {% if gold_type == 'all' %}selected{% endif %}>All Gold Types</option>
+                {% for gold in gold_types %}
+                    <option value="{{ gold }}" {% if gold_type == gold %}selected{% endif %}>{{ gold }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <!-- Price Range Filters -->
-    <div class="d-flex">
-        <input type="number" name="price_min" class="form-control me-2" placeholder="Min Price" value="{{ price_min }}">
-        <input type="number" name="price_max" class="form-control" placeholder="Max Price" value="{{ price_max }}">
-    </div>
+        <!-- Price Range Filters -->
+        <div class="col-lg-2 col-md-2 d-flex">
+            <input type="number" name="price_min" class="form-control form-control-sm" placeholder="Min Price" value="{{ price_min }}" style="width: 50%;">
+            <input type="number" name="price_max" class="form-control form-control-sm" placeholder="Max Price" value="{{ price_max }}" style="width: 50%; margin-left: 5px;">
+        </div>
 
-    <!-- Sort By Filter -->
-    <div>
-        <select name="sort_by" class="form-select">
-            <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
-            <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
-            <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest</option>
-        </select>
-    </div>
+        <!-- Sort By Filter -->
+        <div class="col-lg-2 col-md-2">
+            <select name="sort_by" class="form-select form-select-sm">
+                <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest</option>
+            </select>
+        </div>
 
-    <!-- Items Per Page Filter -->
-    <div>
-        <select name="per_page" class="form-select">
-            <option value="9" {% if per_page == 9 %}selected{% endif %}>9</option>
-            <option value="12" {% if per_page == 12 %}selected{% endif %}>12</option>
-            <option value="24" {% if per_page == 24 %}selected{% endif %}>24</option>
-            <option value="48" {% if per_page == 48 %}selected{% endif %}>48</option>
-        </select>
-    </div>
+        <!-- Items Per Page Filter -->
+        <div class="col-lg-1 col-md-1">
+            <select name="per_page" class="form-select form-select-sm">
+                <option value="9" {% if per_page == 9 %}selected{% endif %}>9</option>
+                <option value="12" {% if per_page == 12 %}selected{% endif %}>12</option>
+                <option value="24" {% if per_page == 24 %}selected{% endif %}>24</option>
+                <option value="48" {% if per_page == 48 %}selected{% endif %}>48</option>
+            </select>
+        </div>
 
-    <!-- Apply Filters Button -->
-    <button type="submit" class="btn btn-primary">Apply Filters</button>
-</form>
+        <!-- Apply Filters Button -->
+        <div class="col-lg-1 col-md-1">
+            <button type="submit" class="btn btn-primary btn-sm w-100">Apply</button>
+        </div>
+    </form>
+</div>
 
 <!-- Catalog Items Grouped by Name -->
 <div class="row">
@@ -106,37 +118,20 @@
                 <h5 class="card-title">{{ product_data.product.product_name }}</h5>
                 <p class="card-text">Total Stock: {{ product_data.stock }}</p>
 
-                <!-- Price Per Gram -->
-                <div class="mt-3 p-2 text-center" style="background-color: #f8f9fa; border-radius: 5px;">
-                    <strong>Price per gram: </strong>
-                    {% if product_data.product.karat == '18K' and product_data.product.gold_type == 'Chinese Gold' %}
-                        ₱{{ prices.chinese_18k }}
-                    {% elif product_data.product.karat == '21K' and product_data.product.gold_type == 'Chinese Gold' %}
-                        ₱{{ prices.chinese_21k }}
-                    {% elif product_data.product.karat == '18K' and product_data.product.gold_type == 'Saudi Gold' %}
-                        ₱{{ prices.saudi_18k }}
-                    {% elif product_data.product.karat == '21K' and product_data.product.gold_type == 'Saudi Gold' %}
-                        ₱{{ prices.saudi_21k }}
-                    {% else %}
-                        Price Not Available
-                    {% endif %}
-                </div>
-
                 <!-- Available Sizes and Weights -->
-                <!-- Available Sizes and Weights -->
-                <button class="btn btn-info mt-auto" type="button" data-bs-toggle="collapse" data-bs-target="#sizes-{{ loop.index }}">
+                <button class="btn btn-info mt-auto btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#sizes-{{ loop.index }}">
                     Available Sizes
                 </button>
 
-                <div class="collapse mt-4" id="sizes-{{ loop.index }}">
-                    <ul class="list-group">
-                        {% for size, stock in product_data.sizes.items() %}
+                <div class="collapse mt-2" id="sizes-{{ loop.index }}">
+                    <ul class="list-group list-group-flush">
+                        {% for variation in product_data.variations %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <strong>Size:</strong> {{ size }}
-                                <span class="badge bg-primary">Weight: {{ product_data.product.weight }}g</span>
+                                <strong>Size:</strong> {{ variation.size }}
+                                <small class="text-muted">Weight: {{ variation.weight }}g</small> <!-- Added weight display -->
                             </div>
-                            <small class="text-muted" style="margin-left: 1px;">Stock: {{ stock }}</small>
+                            <small class="text-muted">Stock: {{ variation.stock }}</small>
                         </li>
                         {% endfor %}
                     </ul>
@@ -151,10 +146,10 @@
 <nav aria-label="Page navigation">
     <ul class="pagination justify-content-center">
         <li class="page-item {% if not previous_page %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('catalog', page=previous_page, category=category, price_min=price_min, price_max=price_max, sort_by=sort_by, karat=karat, gold_type=gold_type) }}">Previous</a>
+            <a class="page-link" href="{{ url_for('catalog', page=previous_page, category=category, price_min=price_min, price_max=price_max, sort_by=sort_by, karat=karat, gold_type=gold_type, search_query=search_query) }}">Previous</a>
         </li>
         <li class="page-item {% if not next_page %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('catalog', page=next_page, category=category, price_min=price_min, price_max=price_max, sort_by=sort_by, karat=karat, gold_type=gold_type) }}">Next</a>
+            <a class="page-link" href="{{ url_for('catalog', page=next_page, category=category, price_min=price_min, price_max=price_max, sort_by=sort_by, karat=karat, gold_type=gold_type, search_query=search_query) }}">Next</a>
         </li>
     </ul>
 </nav>

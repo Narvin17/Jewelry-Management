@@ -13,6 +13,8 @@ from sqlalchemy import func
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from flask_talisman import Talisman
+from datetime import timedelta
+
 import os
 import random
 import string
@@ -27,9 +29,22 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/images')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
 
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+with app.app_context():
+    users = User.query.all()
+    for user in users:
+        # Only hash if the password is not already hashed
+        if not user.password.startswith('pbkdf2:sha256') and not user.password.startswith('scrypt:'):
+            hashed_password = generate_password_hash(user.password)
+            user.password = hashed_password
+    db.session.commit()
+    print("All passwords have been hashed!")
+
 
 csrf = CSRFProtect(app)
 db.init_app(app)
@@ -66,7 +81,7 @@ def float_filter(value):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))  # Updated for SQLAlchemy 2.x
+    return db.session.get(User, int(user_id))  # Ensure compatibility with SQLAlchemy 2.x
 
 # Function to generate a unique barcode
 def generate_barcode(category, karat, gold_type):
@@ -98,19 +113,40 @@ def generate_barcode(category, karat, gold_type):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
+
+    # Check if the form is submitted and validated correctly
     if form.validate_on_submit():
         username = form.username.data.strip()
         password = form.password.data.strip()
+
+        # Try to find the user by username
         user = User.query.filter_by(username=username).first()
 
+        # Logging for debugging purposes
+        if user:
+            app.logger.debug(f"User found: {user.username}")
+        else:
+            app.logger.debug(f"No user found with username: {username}")
+
+        # Check if the user exists and if the password is correct
         if user and check_password_hash(user.password, password):
             login_user(user)
             flash('Login successful!', 'success')
+
+            # Logging successful login
+            app.logger.debug(f"User {username} logged in successfully.")
+
             return redirect(url_for('dashboard'))
         else:
+            # Provide a more specific log for failed login attempts
+            app.logger.debug(f"Failed login attempt for username: {username}")
+
+            # Flash message for incorrect credentials
             flash('Invalid username or password', 'error')
 
-    return render_template('login.html', form=form) 
+    # If the request is a GET or the form validation fails, render the login template
+    return render_template('login.html', form=form)
+
 
 @app.route('/create_user', methods=['GET', 'POST'])
 @login_required  # Ensure the user is logged in
@@ -176,6 +212,11 @@ def admin_dashboard():
         return redirect(url_for('dashboard'))
     return render_template('admin_dashboard.html')
 
+@app.before_request
+def enforce_logout():
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))  # Redirect to login if session expired
+
 # General dashboard
 @app.route('/dashboard')
 @login_required
@@ -238,46 +279,11 @@ def inventory():
     page = request.args.get('page', 1, type=int)
     per_page = 1000  # Number of items per page for the main table
 
-    tree_page = request.args.get('tree_page', 1, type=int)
-    tree_per_page = 10  # Number of categories per page in the tree
-
-    # Base query for inventory
-    query = Inventory.query
+    # Base query for inventory (assuming sizes is a relationship or attribute in the Inventory model)
+    query = Inventory.query.options(db.joinedload('sizes'))  # Load sizes with the inventory items
 
     # Paginate the main inventory items
     paginated_items = query.paginate(page=page, per_page=per_page, error_out=False)
-
-    # Create an inventory tree grouped by Category -> Karat -> Gold Type
-    inventory_tree = {}
-
-    for item in paginated_items.items:
-        category = item.category
-        karat = item.karat
-        gold_type = item.gold_type
-
-        if category not in inventory_tree:
-            inventory_tree[category] = {'karat': {}, 'count': 0}
-
-        if karat not in inventory_tree[category]['karat']:
-            inventory_tree[category]['karat'][karat] = {'gold_type': {}, 'count': 0}
-
-        if gold_type not in inventory_tree[category]['karat'][karat]['gold_type']:
-            inventory_tree[category]['karat'][karat]['gold_type'][gold_type] = {'items': [], 'count': 0}
-
-        # Add item details under the correct category, karat, and gold type
-        inventory_tree[category]['karat'][karat]['gold_type'][gold_type]['items'].append(item)
-
-        # Increment stock counts at each level
-        inventory_tree[category]['count'] += item.quantity
-        inventory_tree[category]['karat'][karat]['count'] += item.quantity
-        inventory_tree[category]['karat'][karat]['gold_type'][gold_type]['count'] += item.quantity
-
-    # Pagination logic for the inventory tree
-    total_tree_items = len(inventory_tree)
-    total_tree_pages = ceil(total_tree_items / tree_per_page)
-
-    # Slicing inventory tree for pagination (simulated as list for simplicity)
-    paginated_tree_items = list(inventory_tree.items())[(tree_page - 1) * tree_per_page:tree_page * tree_per_page]
 
     # Retrieve gold prices from session or use default values if not set
     gold_prices = session.get('gold_prices', {
@@ -287,22 +293,18 @@ def inventory():
         'saudi_21k': 0
     })
 
-    # Pass the form to the template
+    # Pass the form and the paginated items to the template
     return render_template(
         'inventory.html',
-        items=paginated_items.items,
-        inventory_tree=dict(paginated_tree_items),
+        items=paginated_items.items,  # Pass the items directly
         total_pages=paginated_items.pages,
         current_page=page,
         previous_page=paginated_items.prev_num,
         next_page=paginated_items.next_num,
-        total_tree_pages=total_tree_pages,
-        current_tree_page=tree_page,
-        previous_tree_page=tree_page - 1 if tree_page > 1 else None,
-        next_tree_page=tree_page + 1 if tree_page < total_tree_pages else None,
         prices=gold_prices,
         form=gold_prices_form  # Pass the GoldPricesForm instance to the template
     )
+
 
 @app.route('/inventory_tree')
 @login_required
@@ -342,6 +344,7 @@ def catalog():
     gold_type = request.args.get('gold_type', 'all')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 48, type=int)
+    search_query = request.args.get('search_query', '').strip()
 
     # Fetch distinct categories, karats, and gold types from the inventory
     categories = Inventory.query.with_entities(Inventory.category).distinct().all()
@@ -370,6 +373,10 @@ def catalog():
     # Filter by gold type
     if gold_type != 'all':
         query = query.filter(Inventory.gold_type == gold_type)
+
+    # Filter by search query (case-insensitive)
+    if search_query:
+        query = query.filter(Inventory.product_name.ilike(f'%{search_query}%'))
 
     # Sorting logic
     if sort_by == 'price_asc':
@@ -417,8 +424,8 @@ def catalog():
         categories=categories,
         karats=karats,
         gold_types=gold_types,
-        previous_page=page-1 if page > 1 else None,
-        next_page=page+1 if page < total_pages else None,
+        previous_page=page - 1 if page > 1 else None,
+        next_page=page + 1 if page < total_pages else None,
         total_pages=total_pages,
         current_page=page,
         category=category,
@@ -428,9 +435,9 @@ def catalog():
         gold_type=gold_type,
         sort_by=sort_by,
         per_page=per_page,
+        search_query=search_query,  # Pass the search query to the template
         prices=gold_prices  # Pass the prices to the template
     )
-
 
 
 @app.route('/add_expense', methods=['GET', 'POST'])
@@ -572,12 +579,22 @@ def add_product():
 
     return render_template('add_product.html', form=form, warning_message=warning_message)
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/products', methods=['GET'])
 @login_required
 def products():
     # Fetch unprinted products from the database
     unprinted_products = Inventory.query.filter_by(printed=False).all()
     return render_template('products.html', products=unprinted_products)
+
+@app.before_request
+def session_management():
+    session.permanent = True  # Make the session permanent
+    app.permanent_session_lifetime = timedelta(minutes=30)
+    session.modified = True
 
 @app.route('/update_printed_status', methods=['POST'])
 @login_required
@@ -737,13 +754,49 @@ def void_sale(sale_id):
         flash('Access denied', 'error')
         return redirect(url_for('dashboard'))
 
+    # Fetch the sold product record
     sold_product = SoldProduct.query.get_or_404(sale_id)
     
     try:
+        # Check if the product exists in the inventory
+        inventory_product = Inventory.query.filter_by(
+            product_name=sold_product.product_name,
+            size=sold_product.size,
+            karat=sold_product.karat,
+            gold_type=sold_product.gold_type
+        ).first()
+        
+        # If the product is found in inventory, increase its quantity
+        if inventory_product:
+            inventory_product.quantity += sold_product.quantity_sold
+        else:
+            # If the product was fully sold out, re-add it to the inventory
+            new_inventory_product = Inventory(
+                product_name=sold_product.product_name,
+                category=sold_product.category,
+                weight=sold_product.weight,
+                karat=sold_product.karat,
+                gold_type=sold_product.gold_type,
+                size=sold_product.size,
+                barcode=sold_product.barcode,
+                quantity=sold_product.quantity_sold,  # Add back the sold quantity
+                price_per_unit=sold_product.total_price / sold_product.quantity_sold if sold_product.quantity_sold else 0,
+                price_per_gram=None,  # Adjust this if price per gram is needed
+                image_url=None,  # Optional: Add this if product images are tracked
+                printed=False  # Optional: Set this based on your system
+            )
+            db.session.add(new_inventory_product)
+        
+        # Remove the sold product record from the sold products table
         db.session.delete(sold_product)
+        
+        # Commit the changes to the database
         db.session.commit()
-        flash(f"Sale for product '{sold_product.product_name}' has been voided.", "success")
+
+        flash(f"Sale for product '{sold_product.product_name}' has been voided and returned to inventory.", "success")
+    
     except Exception as e:
+        # Rollback in case of any error
         db.session.rollback()
         flash(f"Failed to void sale. Error: {e}", "error")
     
@@ -767,12 +820,15 @@ def inventory_report():
 
     return render_template('inventory_report.html', low_stock_items=low_stock_items)
 
-# Route for sales report (accessible to admin and staff)
-@app.route('/sales_report', methods=['GET'])
+@app.route('/sales_report', methods=['GET', 'POST'])
 @login_required
 def sales_report():
     # Time frame filter from URL
     time_frame = request.args.get('time_frame', 'monthly')
+
+    # Date filter inputs (optional)
+    start_date = request.args.get('start_date', '2023-01-01')
+    end_date = request.args.get('end_date', datetime.now().strftime('%Y-%m-%d'))
 
     # Initialize sales data dictionary
     sales_data = {}
@@ -811,13 +867,29 @@ def sales_report():
     labels = [entry['period'] for entry in sales_data.get(time_frame, [])]
     data = [entry['total_sales'] for entry in sales_data.get(time_frame, [])]
 
-    # Pass sales_data, time_frame, labels, and data to the template
-    return render_template('sales_report.html',
-                           sales_data=sales_data,
-                           time_frame=time_frame,
-                           labels=labels,
-                           data=data)
+    # Retrieve filtered sales records (based on start and end date)
+    sales_records = SoldProduct.query.filter(
+        SoldProduct.date_sold.between(start_date, end_date)
+    ).all()
 
+    # Compute statistics for the filtered records
+    total_sales = sum(sale.total_price for sale in sales_records)
+    total_products_sold = len(sales_records)
+
+    # Render template with both sales summary and detailed records
+    return render_template(
+        'sales_report.html',
+        sales_data=sales_data,
+        sales_records=sales_records,
+        time_frame=time_frame,
+        labels=labels,
+        data=data,
+        start_date=start_date,
+        end_date=end_date,
+        total_sales=total_sales,
+        total_products_sold=total_products_sold
+    )
+    
 
 # Route for customer report (accessible to admin and staff)
 @app.route('/customer-report', methods=['GET'])
@@ -854,6 +926,7 @@ def financial_report():
 @login_required
 def reports_dashboard():
     return render_template('reports.html')
+
 
 if __name__ == '__main__':
     with app.app_context():

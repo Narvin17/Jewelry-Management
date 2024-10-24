@@ -1,0 +1,191 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+<div class="container d-flex align-items-center justify-content-between" style="padding: 0;">
+    <h1 class="fw-bold" style="font-size: 2.5rem; text-transform: uppercase; margin: 0;">
+        Admin Power
+    </h1>
+    <div class="d-flex">
+        <a href="{{ url_for('create_user') }}" class="btn btn-success btn-sm me-2">Create User</a> <!-- Create User Button -->
+        <a href="{{ url_for('user_profiles') }}" class="btn btn-primary btn-sm">User Profiles</a> <!-- User Profiles Button -->
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>User Login Statistics</h2>
+    <form method="GET" action="{{ url_for('admin_power') }}">
+        <label for="date">Select Date:</label>
+        <select name="date" id="date" onchange="this.form.submit()">
+            <option value="all" {% if selected_date == "all" %}selected{% endif %}>All Dates</option>
+            {% for date_value, date_display in dates %}
+                <option value="{{ date_value }}" {% if date_value == selected_date and selected_date != "all" %}selected{% endif %}>
+                    {{ date_display }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Logins on {{ selected_date }}</h5>
+                    <p class="card-text">{{ login_count_today }}</p>
+                    <button class="btn btn-primary btn-sm" onclick="toggleVisibility('user-logins-table')">View</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if user_logins %}
+    <h2>User Logins</h2>
+    <table class="table table-bordered table-striped" id="user-logins-table" style="display: none;">
+        <thead class="table-dark">
+            <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for login in user_logins %}
+            <tr>
+                <td>{{ login.user.username }}</td>
+                <td>{{ login.user.role }}</td>
+                <td>{{ login.login_time.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <h2>Sold Products</h2>
+    <form method="GET" action="{{ url_for('admin_power') }}">
+        <label for="sold_date">Select Sold Date:</label>
+        <select name="sold_date" id="sold_date" onchange="this.form.submit()">
+            <option value="">-- Select a date --</option>
+            {% for date in sold_dates %}
+                <option value="{{ date }}" {% if date == selected_sold_date %}selected{% endif %}>
+                    {{ date }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Sold Value</h5>
+                    <p class="card-text">₱{{ total_sold_value | round(2) }}</p>
+                    <button class="btn btn-primary btn-sm" onclick="toggleVisibility('sold-products-table')">View</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Items Sold</h5>
+                    <p class="card-text">{{ total_items_sold }}</p>
+                    <button class="btn btn-primary btn-sm" onclick="toggleVisibility('sold-products-table')">View</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if sold_products %}
+    <table class="table table-bordered table-striped" id="sold-products-table" style="display: none;">
+        <thead class="table-dark">
+            <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Quantity Sold</th>
+                <th>Total Price (₱)</th>
+                <th>Date Sold</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sale in sold_products %}
+            <tr>
+                <td>{{ sale.product_name }}</td>
+                <td>{{ sale.category }}</td>
+                <td>{{ sale.quantity_sold }}</td>
+                <td>₱{{ sale.total_price | round(2) }}</td>
+                <td>{{ sale.date_sold.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No sold products for the selected date.</p>
+    {% endif %}
+
+    <h2>Inventory</h2>
+    <form method="GET" action="{{ url_for('admin_power') }}">
+        <label for="added_date">Select Added Date:</label>
+        <select name="added_date" id="added_date" onchange="this.form.submit()">
+            <option value="">-- Select a date --</option>
+            {% for date in added_dates %}
+                <option value="{{ date }}" {% if date == selected_added_date %}selected{% endif %}>
+                    {{ date }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Inventory Value</h5>
+                    <p class="card-text">₱{{ total_inventory_value | round(2) }}</p>
+                    <button class="btn btn-primary btn-sm" onclick="toggleVisibility('inventory-table')">View</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Products Added on {{ selected_date }}</h5>
+                    <p class="card-text">{{ added_products_today }}</p>
+                    <button class="btn btn-primary btn-sm" onclick="toggleVisibility('added-products-table')">View</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if inventory_items %}
+    <table class="table table-bordered table-striped" id="inventory-table" style="display: none;">
+        <thead class="table-dark">
+            <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Weight (grams)</th>
+                <th>Price per Unit (₱)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in inventory_items %}
+            <tr>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.weight }}</td>
+                <td>₱{{ item.price_per_unit | round(2) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No products added for the selected date.</p>
+    {% endif %}
+</div>
+
+<script>
+function toggleVisibility(tableId) {
+    const table = document.getElementById(tableId);
+    table.style.display = (table.style.display === "none") ? "table" : "none"; // Toggle display between none and table
+}
+</script>
+{% endblock %}

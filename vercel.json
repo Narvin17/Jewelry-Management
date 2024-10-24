@@ -14,7 +14,7 @@
   ],
   "env": {
     "SQLALCHEMY_DATABASE_URI": "postgresql+pg8000://postgres:castro12@localhost:5432/jewelry_management",
-    "SECRET_KEY": "@NarvinTomSampanCastro0917",
+    "SECRET_KEY": "NarvinTomSampanCastro0917",
     "UPLOAD_FOLDER": "static/images"
   }
 }

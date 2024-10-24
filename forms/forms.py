@@ -6,6 +6,7 @@ from flask_wtf.file import FileRequired, FileAllowed
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
 
 class AddProductForm(FlaskForm):
     product_name = StringField('Product Name', validators=[DataRequired()])
@@ -85,3 +86,10 @@ class GoldPricesForm(FlaskForm):
 class MarkAsSoldForm(FlaskForm):
     product_id = HiddenField(validators=[DataRequired()])
     submit = SubmitField('Mark as Sold')
+
+
+class CreateUserForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    role = SelectField('Role', choices=[('admin', 'Admin'), ('staff', 'Staff'), ('guest', 'Guest')], validators=[DataRequired()])
+    submit = SubmitField('Create User')

@@ -23,14 +23,14 @@
                 <!-- Navigation Items -->
                 <ul class="nav flex-column mt-4 flex-grow-1">
                     <!-- Display only Catalog if the user is not authenticated, otherwise show full sidebar -->
-                        {% if not current_user.is_authenticated %}
+                    {% if not current_user.is_authenticated %}
                         <!-- Guest view (not logged in) -->
                         <li class="nav-item">
                             <a class="nav-link text-black" href="{{ url_for('catalog') }}">
                                 <i class="fas fa-book-open"></i> Catalog
                             </a>
                         </li>
-                        {% else %}
+                    {% else %}
                         <!-- Authenticated view (logged in) -->
                         <li class="nav-item">
                             <a class="nav-link text-black" href="{{ url_for('catalog') }}">
@@ -52,13 +52,11 @@
                                 <i class="fas fa-shopping-cart"></i> Sold Products
                             </a>
                         </li>
-                        <!-- Expense link visible only for admin users -->
-                        {% if current_user.role == 'admin' %}
-                        <li class="nav-item">
-                            <a class="nav-link text-black" href="{{ url_for('expenses') }}">
-                                <i class="fas fa-receipt"></i> Expense List
-                            </a>
-                        </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-black" href="{{ url_for('expenses') }}">
+                                    <i class="fas fa-receipt"></i> Expense List
+                                </a>
+                            </li>
                         {% endif %}
                         <li class="nav-item">
                             <a class="nav-link text-black" href="{{ url_for('reports_dashboard') }}">
@@ -75,12 +73,16 @@
                                 <i class="fas fa-print"></i> Print Details and Barcodes
                             </a>
                         </li>
-                            
-                        
+                         <!-- Admin link for Admin Power -->    
+                        {% if current_user.role == 'admin' %}
+                            <li class="nav-item">
+                                <a class="nav-link text-black" href="{{ url_for('admin_power') }}">
+                                    <i class="fas fa-cog"></i> Admin Power
+                                </a>
+                            </li>
                     {% endif %}
-
                 </ul>
-            
+
                 <!-- User Info Section at the Bottom -->
                 <div class="user-info p-3" style="background-color: hsl(212, 80%, 90%); border-radius: 10px;">
                     <i class="fas fa-user-circle fa-2x"></i>
@@ -98,7 +100,6 @@
                     {% endif %}
                 </div>
             </nav>
-            
 
             <!-- Main Content -->
             <div class="col-md-10 main-content p-4">
@@ -132,10 +133,38 @@
                 <!-- Footer -->
                 <footer class="custom-footer">
                     <p>&copy; 2024 Jewelry Management System</p>
-                </footer>                               
+                </footer>
             </div>
         </div>
     </div>
+
+    <!-- Inactivity Timeout Script -->
+    <script>
+        let logoutTimer;
+    
+        function resetLogoutTimer() {
+            clearTimeout(logoutTimer);
+            logoutTimer = setTimeout(function() {
+                window.location.href = "{{ url_for('logout') }}";  // This should be rendered correctly in Flask
+            }, 15 * 60 * 1000);  // 15 minutes timeout
+        }
+    
+        // Reset timer on any activity
+        window.onload = resetLogoutTimer;
+        document.onmousemove = resetLogoutTimer;
+        document.onkeydown = resetLogoutTimer;
+    
+        // Log out the user when the page is closed or navigated away from
+        window.addEventListener('beforeunload', function(event) {
+            fetch("{{ url_for('logout') }}", {  // Flask will inject the correct URL
+                method: 'POST', 
+                credentials: 'same-origin'
+            }).catch(function(err) {
+                console.error('Logout request failed', err);
+            });
+        });
+    </script>
+    
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

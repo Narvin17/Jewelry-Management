@@ -1,5 +1,6 @@
 {% extends 'layout.html' %}
 {% block header %}Sales Report{% endblock %}
+
 {% block content %}
     <!-- Form to Select Time Frame -->
     <form method="GET" action="{{ url_for('sales_report') }}">
@@ -12,7 +13,7 @@
         </select>
     </form>
 
-    <!-- Table to Display Sales Data -->
+    <!-- Table to Display Sales Data (Summary) -->
     <table class="table table-bordered mt-3">
         <thead>
             <tr>
@@ -36,6 +37,57 @@
         </tbody>
     </table>
 
+    <!-- Chart for Sales Summary -->
+    <canvas id="salesChart" width="400" height="300"></canvas>
+    
+    <!-- Detailed Sales Records Table -->
+    <h4 class="mt-5">Detailed Sales Records</h4>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Weight (grams)</th>
+                    <th>Price per Gram (₱)</th>
+                    <th>Total Price (₱)</th>
+                    <th>Karat</th>
+                    <th>Gold Type</th>
+                    <th>Size</th>
+                    <th>Barcode</th>
+                    <th>Date Sold</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales_records %}
+                    <tr>
+                        <td>{{ sale.product_name }}</td>
+                        <td>{{ sale.category }}</td>
+                        <td>{{ sale.weight }}</td>
+                        <td>{{ sale.price_per_gram }}</td>
+                        <td>{{ sale.total_price }}</td>
+                        <td>{{ sale.karat }}</td>
+                        <td>{{ sale.gold_type }}</td>
+                        <td>{{ sale.size }}</td>
+                        <td>{{ sale.barcode }}</td>
+                        <td>{{ sale.date_sold.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <a href="{{ url_for('view_sold_product', sale_id=sale.id) }}" class="btn btn-info btn-sm">View</a>
+                            <form action="{{ url_for('void_sale', sale_id=sale.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to void this sale?');">
+                                <button type="submit" class="btn btn-danger btn-sm">Void</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="11" class="text-center">No sales records available.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
     <!-- Div for Highcharts Graph -->
     <div id="container" style="width: 100%;"></div>
 
@@ -46,52 +98,50 @@
     </script>
 
     <!-- Existing Chart.js Code -->
-    <canvas id="salesChart" width="400" height="300"></canvas>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-            /* eslint-disable */  // Or use /* jshint ignore:start */
-    document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('salesChart').getContext('2d');
-        const salesChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,  // Use the labels variable
-                datasets: [{
-                    label: 'Total Sales (₱)',
-                    data: data,  // Use the data variable
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    tension: 0.4,
-                    borderWidth: 2,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: '{{ time_frame.capitalize() }}',
-                        },
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Total Sales (₱)',
-                        },
-                    }
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            const salesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,  // Use the labels variable
+                    datasets: [{
+                        label: 'Total Sales (₱)',
+                        data: data,  // Use the data variable
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    }]
                 },
-                plugins: {
-                    legend: {
-                        display: false
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '{{ time_frame.capitalize() }}',
+                            },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total Sales (₱)',
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
                     }
                 }
-            }
+            });
         });
-    });
     </script>
 
     <!-- Existing styles -->

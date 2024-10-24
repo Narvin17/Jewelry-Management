@@ -1,11 +1,61 @@
 {% extends 'layout.html' %}
 
 {% block header %}
-Sales Records
+<div class="d-flex justify-content-between align-items-center">
+    <h1>Sales Records</h1>
+    <!-- Date Filter Form beside "Sales Records" -->
+    <form method="GET" action="{{ url_for('sold_product') }}" class="form-inline">
+        <label for="date_sold" class="mr-2">Select Date:</label>
+        <select class="form-select" id="date_sold" name="date_sold" onchange="this.form.submit()" style="max-width: 200px;">
+            <option value="">All Dates</option>
+            {% for date in available_dates %}
+                <option value="{{ date }}" {% if request.args.get('date_sold') == date %}selected{% endif %}>{{ date }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
 {% endblock %}
 
 {% block content %}
 <div class="container">
+    <!-- Search Bar for Barcode -->
+    <div class="input-group mb-3" style="max-width: 250px;">
+        <input type="text" class="form-control form-control-sm" placeholder="Search by Barcode..." name="barcode"
+               value="{{ request.args.get('barcode') }}" oninput="this.form.submit();" aria-label="Search by Barcode">
+        <input type="hidden" name="date_sold" value="{{ request.args.get('date_sold') }}">
+        <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="fas fa-search"></i></button>
+    </div>
+
+    {% if sales and request.args.get('date_sold') %}
+        <!-- Simple Statistics Overview -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4 col-sm-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Sales</h5>
+                        <p class="card-text">₱{{ total_sales | default(0) | round(2) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Items Sold</h5>
+                        <p class="card-text">{{ total_items_sold | default(0) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Average Price per Gram</h5>
+                        <p class="card-text">₱{{ average_price_per_gram | default(0) | round(2) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
     <div class="table-responsive">
         <table class="table table-bordered table-striped">
             <thead class="table-dark">
@@ -43,10 +93,10 @@ Sales Records
                             {% elif sale.total_price is not none and sale.weight > 0 %}
                                 {% set price_per_gram = (sale.total_price / sale.weight) | round(2) %}
                             {% endif %}
-                            ₱{{ price_per_gram }}
+                            ₱{{ price_per_gram | default(0) }}
                         </td>
                         <td>
-                            ₱{{ (price_per_gram * sale.weight) | round(2) if sale.weight else sale.total_price or 'N/A' }}
+                            ₱{{ (price_per_gram * sale.weight) | default(0) | round(2) if sale.weight else sale.total_price or 'N/A' }}
                         </td>
                         <td>{{ sale.karat or 'N/A' }}</td>
                         <td>{{ sale.gold_type or 'N/A' }}</td>

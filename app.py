@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session
-from models.database import db, Inventory, SoldProduct, Expense, User
-from forms.forms import AddProductForm, EditProductForm, AddExpenseForm, LoginForm, GoldPricesForm
+from models.database import db, Inventory, SoldProduct, Expense, UserLogin, User
+from forms.forms import AddProductForm, EditProductForm, AddExpenseForm, LoginForm, GoldPricesForm, CreateUserForm  
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_migrate import Migrate
 from datetime import datetime
@@ -13,10 +13,12 @@ from sqlalchemy import func
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from flask_talisman import Talisman
+from sqlalchemy import cast, Date
+from dotenv import load_dotenv
+
 import os
 import random
 import string
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -68,6 +70,62 @@ def float_filter(value):
 def load_user(user_id):
     return db.session.get(User, int(user_id))  # Updated for SQLAlchemy 2.x
 
+@app.route('/user_profiles', methods=['GET'])
+@login_required
+def user_profiles():
+    if current_user.role != 'admin':
+        flash('Access denied. Only admins can view user profiles.', 'error')
+        return redirect(url_for('dashboard'))
+
+    users = User.query.all()  # Fetch all users from the database
+    form = CreateUserForm()  # Create an instance of the form
+
+    return render_template('user_profiles.html', users=users, form=form)
+
+@app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    if current_user.role != 'admin':
+        flash('Access denied. Only admins can edit users.', 'error')
+        return redirect(url_for('dashboard'))
+
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        username = request.form.get('username').strip()
+        role = request.form.get('role').strip().lower()
+
+        if not username or not role:
+            flash('All fields are required.', 'error')
+            return redirect(url_for('edit_user', user_id=user.id))
+
+        user.username = username
+        user.role = role
+        db.session.commit()
+        flash(f'User {username} updated successfully!', 'success')
+        return redirect(url_for('user_profiles'))
+
+    return render_template('edit_user.html', user=user)
+
+@app.route('/remove_user/<int:user_id>', methods=['POST'])
+@login_required
+def remove_user(user_id):
+    if current_user.role != 'admin':
+        flash('Access denied. Only admins can remove users.', 'error')
+        return redirect(url_for('dashboard'))
+
+    user = User.query.get_or_404(user_id)  # Get the user by ID
+    db.session.delete(user)  # Delete the user from the database
+
+    try:
+        db.session.commit()  # Commit the changes to the database
+        flash(f"User '{user.username}' removed successfully!", "success")
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of error
+        flash(f"Error removing user: {e}", "error")
+
+    return redirect(url_for('user_profiles'))  # Redirect to user profiles page
+
 # Function to generate a unique barcode
 def generate_barcode(category, karat, gold_type):
     category_prefixes = {
@@ -94,7 +152,6 @@ def generate_barcode(category, karat, gold_type):
     barcode = f"{category_prefix}-{karat_prefix}-{gold_type_prefix}-{random_suffix}"
     return barcode
 
-# Route for login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
@@ -105,41 +162,30 @@ def login():
 
         if user and check_password_hash(user.password, password):
             login_user(user)
+
+            # Log the login time
+            new_login = UserLogin(user_id=user.id)
+            db.session.add(new_login)
+            db.session.commit()
+
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid username or password', 'error')
 
-    return render_template('login.html', form=form) 
+    return render_template('login.html', form=form)
+
 
 @app.route('/create_user', methods=['GET', 'POST'])
-@login_required  # Ensure the user is logged in
+@login_required
 def create_user():
-    # Only allow admins to access the page
-    if current_user.role != 'admin':
-        flash('Access denied. Only admins can create new users.', 'error')
-        return redirect(url_for('dashboard'))
-    
-    if request.method == 'POST':
-        username = request.form.get('username').strip()
-        password = request.form.get('password').strip()
-        role = request.form.get('role').lower()
+    # Create an instance of your form class
+    form = CreateUserForm()
 
-        # Basic validation for empty fields
-        if not username or not password or not role:
-            flash('All fields are required.', 'error')
-            return redirect(url_for('create_user'))
-
-        # Ensure the role is valid
-        if role not in ['admin', 'staff', 'guest']:
-            flash('Invalid role. Choose admin, staff, or guest.', 'error')
-            return redirect(url_for('create_user'))
-
-        # Check if the username is already taken
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            flash('Username already exists. Please choose a different one.', 'error')
-            return redirect(url_for('create_user'))
+    if form.validate_on_submit():  # Validate form on POST
+        username = form.username.data.strip()
+        password = form.password.data.strip()
+        role = form.role.data.lower()
 
         # Hash the password
         hashed_password = generate_password_hash(password)
@@ -155,9 +201,10 @@ def create_user():
         except Exception as e:
             db.session.rollback()
             flash(f'Error creating user: {e}', 'error')
-            return redirect(url_for('create_user'))
 
-    return render_template('create_user.html')
+    # Render the template with the form instance
+    return render_template('create_user.html', form=form)
+
 
 # Route for logout
 @app.route('/logout')
@@ -470,6 +517,38 @@ def remove_expense(expense_id):
     # Redirect to the expense list page
     return redirect(url_for('expenses'))
 
+@app.route('/filter_sold_products', methods=['GET'])
+@login_required
+def filter_sold_products():
+    year = request.args.get('filter_year')
+    month = request.args.get('filter_month')
+    day = request.args.get('filter_day')
+
+    selected_date = datetime(int(year), int(month), int(day))
+
+    # Query sold products based on the selected date
+    sold_products = SoldProduct.query.filter(
+        func.date(SoldProduct.date_sold) == selected_date.date()
+    ).all()
+
+    return render_template('admin_power.html', sold_products=sold_products)
+
+@app.route('/filter_inventory', methods=['GET'])
+@login_required
+def filter_inventory():
+    year = request.args.get('filter_year')
+    month = request.args.get('filter_month')
+    day = request.args.get('filter_day')
+
+    selected_date = datetime(int(year), int(month), int(day))
+
+    # Query inventory items based on the selected date
+    inventory_items = Inventory.query.filter(
+        func.date(Inventory.created_at) == selected_date.date()
+    ).all()
+
+    return render_template('admin_power.html', inventory_items=inventory_items)
+
 # Route to add a product (available to admins and staff)
 @app.route('/add_product', methods=['GET', 'POST'])
 @login_required
@@ -534,18 +613,19 @@ def add_product():
             for _ in range(form.quantity.data):
                 barcode_value = generate_barcode(form.category.data, form.karat.data, form.gold_type.data)
                 new_product = Inventory(
-                        product_name=form.product_name.data,
-                        category=form.category.data,
-                        quantity=1,
-                        price_per_unit=price_per_unit,
-                        karat=form.karat.data,
-                        gold_type=form.gold_type.data,
-                        weight=form.weight.data,
-                        size=form.size.data,
-                        barcode=barcode_value,
-                        image_url=photo_path,
-                        printed=False  # Set printed to False for new products
-                    )
+                    product_name=form.product_name.data,
+                    category=form.category.data,
+                    quantity=1,
+                    price_per_unit=price_per_unit,
+                    karat=form.karat.data,
+                    gold_type=form.gold_type.data,
+                    weight=form.weight.data,
+                    size=form.size.data,
+                    barcode=barcode_value,
+                    image_url=photo_path,
+                    printed=False,  # Set printed to False for new products
+                    created_at=datetime.utcnow()  # Set the creation timestamp
+                )
                 db.session.add(new_product)
 
         try:
@@ -571,6 +651,7 @@ def add_product():
         warning_message = "Please fill in all fields correctly."
 
     return render_template('add_product.html', form=form, warning_message=warning_message)
+
 
 @app.route('/products', methods=['GET'])
 @login_required
@@ -687,27 +768,52 @@ def mark_as_sold(product_id):
 
     return redirect(url_for('inventory'))
 
-@app.route('/sold_product', methods=['GET'])
+@app.route('/sales_summary', methods=['GET'])
 @login_required
-def sold_product():
-    sales_data = SoldProduct.query.all()
-    
-    # Debugging: log the sales data
-    if not sales_data:
-        app.logger.debug("No sales records found.")
-    else:
-        # Check for None entries
-        sales_data = [sale for sale in sales_data if sale is not None]
+def sales_summary():
+    # Fetch available sold dates for the filter (distinct dates)
+    available_dates = db.session.query(
+        func.DATE(SoldProduct.date_sold).label('date')
+    ).distinct().order_by('date').all()
 
-    # Retrieve gold prices from session or use default values if not set
+    # Extract date filter from request
+    selected_date = request.args.get('date_sold', None)
+
+    # Initialize the sales query
+    sales_query = SoldProduct.query
+
+    # If a date is selected, filter sales by that date
+    if selected_date:
+        sales_query = sales_query.filter(
+            func.date(SoldProduct.date_sold) == selected_date
+        )
+
+    # Execute the query
+    sales = sales_query.all()
+
+    # Calculate statistics
+    total_sales = sum(sale.total_price for sale in sales)
+    total_items_sold = sum(sale.quantity_sold for sale in sales)
+    average_price_per_gram = total_sales / total_items_sold if total_items_sold else 0
+
+    # Retrieve gold prices from session
     gold_prices = session.get('gold_prices', {
         'chinese_18k': 0,
         'chinese_21k': 0,
         'saudi_18k': 0,
         'saudi_21k': 0
     })
-    return render_template('sold_product.html', sales=sales_data, prices=gold_prices)
 
+    return render_template(
+        'sales_summary.html',  # Change template here
+        sales=sales,
+        prices=gold_prices,
+        available_dates=[date[0].strftime('%Y-%m-%d') for date in available_dates],
+        selected_date=selected_date,
+        total_sales=total_sales,
+        total_items_sold=total_items_sold,
+        average_price_per_gram=average_price_per_gram
+    )
 
 
 # Route to view individual sold product details
@@ -740,14 +846,51 @@ def void_sale(sale_id):
     sold_product = SoldProduct.query.get_or_404(sale_id)
     
     try:
+        # Check if the product exists in the inventory
+        inventory_product = Inventory.query.filter_by(
+            product_name=sold_product.product_name,
+            size=sold_product.size,
+            karat=sold_product.karat,
+            gold_type=sold_product.gold_type,
+            barcode=sold_product.barcode
+        ).first()
+        
+        # If the product is found in inventory, increase its quantity
+        if inventory_product:
+            inventory_product.quantity += sold_product.quantity_sold
+        else:
+            # If the product was fully sold out, re-add it to the inventory
+            new_inventory_product = Inventory(
+                product_name=sold_product.product_name,
+                category=sold_product.category,
+                weight=sold_product.weight,
+                karat=sold_product.karat,
+                gold_type=sold_product.gold_type,
+                size=sold_product.size,
+                barcode=sold_product.barcode,
+                quantity=sold_product.quantity_sold,  # Add back the sold quantity
+                price_per_unit=sold_product.total_price / sold_product.quantity_sold if sold_product.quantity_sold else 0,
+                price_per_gram=None,  # Adjust this if price per gram is needed
+                image_url=None,  # Optional: Add this if product images are tracked
+                printed=False  # Optional: Set this based on your system
+            )
+            db.session.add(new_inventory_product)
+
+        # Remove the sold product record from the SoldProduct table
         db.session.delete(sold_product)
+        
+        # Commit the changes to the database
         db.session.commit()
-        flash(f"Sale for product '{sold_product.product_name}' has been voided.", "success")
+
+        flash(f"Sale for product '{sold_product.product_name}' has been voided and the product has been returned to inventory.", "success")
+    
     except Exception as e:
+        # Rollback in case of any error
         db.session.rollback()
-        flash(f"Failed to void sale. Error: {e}", "error")
+        flash(f"Failed to void sale and return product to inventory. Error: {e}", "error")
     
     return redirect(url_for('sold_product'))
+
 
 # Route for inventory report (accessible to admin and staff)
 @app.route('/inventory-report', methods=['GET'])
@@ -767,56 +910,56 @@ def inventory_report():
 
     return render_template('inventory_report.html', low_stock_items=low_stock_items)
 
-# Route for sales report (accessible to admin and staff)
-@app.route('/sales_report', methods=['GET'])
+@app.route('/sold_product', methods=['GET'])
 @login_required
-def sales_report():
-    # Time frame filter from URL
-    time_frame = request.args.get('time_frame', 'monthly')
+def sold_product():
+    # Fetch available sold dates for the filter (distinct dates)
+    available_dates = db.session.query(
+        func.DATE(SoldProduct.date_sold).label('date')
+    ).distinct().order_by('date').all()
 
-    # Initialize sales data dictionary
-    sales_data = {}
+    # Extract date filter and barcode search from request
+    selected_date = request.args.get('date_sold', None)
+    barcode_search = request.args.get('barcode', None)
 
-    # Query for daily sales
-    daily_sales_query = db.session.query(
-        func.strftime('%Y-%m-%d', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
+    # Initialize the sales query
+    sales_query = SoldProduct.query
 
-    # Query for weekly sales
-    weekly_sales_query = db.session.query(
-        func.strftime('%Y-%W', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
+    # If a date is selected, filter sales by that date
+    if selected_date and selected_date != "None":
+        sales_query = sales_query.filter(func.date(SoldProduct.date_sold) == func.date(selected_date))
 
-    # Query for monthly sales
-    monthly_sales_query = db.session.query(
-        func.strftime('%Y-%m', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
+    # If a barcode search is provided, filter by barcode
+    if barcode_search:
+        # Use ilike for case-insensitive search, adding wildcards for partial matches
+        sales_query = sales_query.filter(SoldProduct.barcode.ilike(f"%{barcode_search}%"))
 
-    # Query for yearly sales
-    yearly_sales_query = db.session.query(
-        func.strftime('%Y', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
+    # Execute the query
+    sales = sales_query.all()
 
-    # Convert query results to list of dictionaries
-    sales_data['daily'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in daily_sales_query]
-    sales_data['weekly'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in weekly_sales_query]
-    sales_data['monthly'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in monthly_sales_query]
-    sales_data['yearly'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in yearly_sales_query]
+    # Calculate statistics
+    total_sales = sum(sale.total_price for sale in sales)
+    total_items_sold = sum(sale.quantity_sold for sale in sales)
+    average_price_per_gram = total_sales / total_items_sold if total_items_sold else 0
 
-    # Prepare labels and data for the chart based on the selected time frame
-    labels = [entry['period'] for entry in sales_data.get(time_frame, [])]
-    data = [entry['total_sales'] for entry in sales_data.get(time_frame, [])]
+    # Retrieve gold prices from session or use default values if not set
+    gold_prices = session.get('gold_prices', {
+        'chinese_18k': 0,
+        'chinese_21k': 0,
+        'saudi_18k': 0,
+        'saudi_21k': 0
+    })
 
-    # Pass sales_data, time_frame, labels, and data to the template
-    return render_template('sales_report.html',
-                           sales_data=sales_data,
-                           time_frame=time_frame,
-                           labels=labels,
-                           data=data)
+    return render_template(
+        'sold_product.html',
+        sales=sales,
+        prices=gold_prices,
+        available_dates=[date[0].strftime('%Y-%m-%d') for date in available_dates],
+        selected_date=selected_date,
+        total_sales=total_sales,
+        total_items_sold=total_items_sold,
+        average_price_per_gram=average_price_per_gram
+    )
 
 
 # Route for customer report (accessible to admin and staff)
@@ -854,6 +997,81 @@ def financial_report():
 @login_required
 def reports_dashboard():
     return render_template('reports.html')
+
+@app.route('/admin_power', methods=['GET'])
+@login_required
+def admin_power():
+    today_date = datetime.today()
+    current_year = today_date.year
+
+    # Get selected date from query parameters for logins (default to today)
+    selected_date = request.args.get('date', default=today_date.strftime('%Y-%m-%d'), type=str)
+    selected_sold_date = request.args.get('sold_date', default=None, type=str)
+    selected_added_date = request.args.get('added_date', default=None, type=str)
+
+    selected_date_obj = datetime.strptime(selected_date, '%Y-%m-%d') if selected_date != "all" else None
+
+    # Count logins for the selected date or all dates
+    if selected_date_obj:
+        login_count_today = UserLogin.query.filter(func.date(UserLogin.login_time) == selected_date_obj.date()).count()
+    else:
+        login_count_today = UserLogin.query.count()
+
+    # Count products added on the selected date or all dates
+    if selected_date_obj:
+        added_products_today = Inventory.query.filter(func.date(Inventory.created_at) == selected_date_obj.date()).count()
+        added_products = Inventory.query.filter(func.date(Inventory.created_at) == selected_date_obj.date()).all()
+    else:
+        added_products_today = Inventory.query.count()
+        added_products = Inventory.query.all()
+
+    # Fetch sold products for the selected sold date or all dates
+    if selected_sold_date:
+        sold_date_obj = datetime.strptime(selected_sold_date, '%Y-%m-%d')
+        sold_products = SoldProduct.query.filter(func.date(SoldProduct.date_sold) == sold_date_obj.date()).all()
+    else:
+        sold_products = SoldProduct.query.all()
+
+    total_sold_value = sum(sale.total_price for sale in sold_products)  # Example calculation
+    total_items_sold = sum(sale.quantity_sold for sale in sold_products)  # Example calculation
+
+    # Prepare dates for the dropdown for user logins
+    dates = []  # Add the "All Dates" option
+    for year in range(current_year - 10, current_year + 1):
+        for month in range(1, 13):
+            for day in range(1, 32):
+                try:
+                    datetime(year, month, day)
+                    dates.append((f"{year}-{month:02d}-{day:02d}", f"{year}-{month:02d}-{day:02d}"))
+                except ValueError:
+                    continue
+
+    # Fetch dates for sold products for dropdown
+    sold_product_dates = db.session.query(func.date(SoldProduct.date_sold)).distinct().order_by(func.date(SoldProduct.date_sold).desc()).all()
+    sold_dates = [date[0].strftime('%Y-%m-%d') for date in sold_product_dates]  # Extracting dates as strings
+
+    # Fetch dates for added products for dropdown
+    added_product_dates = db.session.query(func.date(Inventory.created_at)).distinct().order_by(func.date(Inventory.created_at).desc()).all()
+    added_dates = [date[0].strftime('%Y-%m-%d') for date in added_product_dates]  # Extracting dates as strings
+
+    # Fetch user logins for the selected date
+    user_logins = UserLogin.query.filter(func.date(UserLogin.login_time) == selected_date_obj.date()).all() if selected_date_obj else UserLogin.query.all()
+
+    return render_template('admin_power.html', 
+                           login_count_today=login_count_today,
+                           added_products_today=added_products_today,
+                           total_sold_value=total_sold_value,
+                           total_items_sold=total_items_sold,
+                           sold_products=sold_products,
+                           inventory_items=added_products,  # Show inventory items based on the added products filter
+                           total_inventory_value=sum(item.price_per_unit * item.quantity for item in added_products),  # Example calculation
+                           selected_date=selected_date,
+                           selected_sold_date=selected_sold_date,
+                           selected_added_date=selected_added_date,
+                           dates=dates,
+                           sold_dates=sold_dates,  # Pass sold dates to the template
+                           added_dates=added_dates,  # Pass added dates to the template
+                           user_logins=user_logins)
 
 if __name__ == '__main__':
     with app.app_context():

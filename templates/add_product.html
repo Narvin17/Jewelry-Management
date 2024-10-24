@@ -44,10 +44,17 @@ Add Product
         <div class="row">
             <div class="col-md-6 mb-2">
                 {{ form.photo.label(class="form-label") }}
-                {{ form.photo(class="form-control form-control-sm") }}
+                {{ form.photo(class="form-control form-control-sm", id="photo-input") }}
                 {% for error in form.photo.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
+            </div>
+            <div class="col-md-6 mb-2">
+                <!-- Image Preview Section -->
+                <label class="form-label">Image Preview:</label>
+                <div id="image-preview" style="max-width: 200px; max-height: 200px; overflow: hidden;">
+                    <img id="preview-img" src="#" alt="Image Preview" class="img-fluid d-none" />
+                </div>
             </div>
         </div>
 
@@ -97,4 +104,26 @@ Add Product
         <button type="submit" class="btn btn-primary btn-sm mt-3">Add Product</button>
     </form>
 </div>
+
+<!-- JavaScript to handle image preview -->
+<script>
+    document.getElementById('photo-input').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        const previewImg = document.getElementById('preview-img');
+        const previewContainer = document.getElementById('image-preview');
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                previewImg.classList.remove('d-none');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewImg.src = '#';
+            previewImg.classList.add('d-none');
+        }
+    });
+</script>
+
 {% endblock %}

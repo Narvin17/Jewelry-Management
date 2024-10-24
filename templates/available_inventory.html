@@ -1,0 +1,58 @@
+{% extends 'layout.html' %}
+
+{% block header %}
+<h1>Overall Inventory</h1>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Available Products</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Price (₱)</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in available_products %}
+            <tr>
+                <td>{{ product.name }}</td>
+                <td>{{ product.category }}</td>
+                <td>₱{{ product.price }}</td>
+                <td>{{ product.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Sold Products</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Total Price (₱)</th>
+                <th>Date Sold</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in sold_products %}
+            <tr>
+                <td>{{ product.product_name }}</td>
+                <td>{{ product.category }}</td>
+                <td>₱{{ product.total_price }}</td>
+                <td>{{ product.date_sold.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div>
+        <h3>Total Sold Value: ₱{{ total_sold_value }}</h3>
+        <h3>Total Available Value: ₱{{ total_available_value }}</h3>
+    </div>
+</div>
+{% endblock %}
