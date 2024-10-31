@@ -8,36 +8,62 @@
 <div class="container">
     <h2 class="text-center">Products Overview</h2>
 
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Search Bar -->
     <div class="text-center mb-4">
+        <input type="text" id="search-bar" placeholder="Search by Barcode" class="form-control" style="width: 300px; display: inline-block;" onkeyup="searchProducts()">
         <button class="btn btn-primary" onclick="batchPrint()">Batch Print All</button>
     </div>
 
+    <!-- Unprinted Products -->
     <h4 class="text-center">Unprinted Products</h4>
     <div class="sticker-container" style="display: flex; flex-wrap: wrap; justify-content: center;">
         {% for product in products %}
         {% if not product.printed %}
-        <div class="sticker" style="width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center;">
-            <div style="font-weight: bold;">{{ product.barcode }}</div>
-            <div style="font-weight: bold;">{{ product.product_name }} | {{ product.weight }}g | {{ product.size }}</div>
-            <div>{{ product.karat }} | {{ product.gold_type }} | {{ product.category }}</div>
+        <div class="sticker" data-product-id="{{ product.id }}" style="width: 1in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center;">
+            <img src="{{ url_for('generate_barcode_image', barcode_data=product.barcode) }}" alt="Barcode" style="width: 100%; height: auto;">
+            <div style="font-weight: bold; font-size: 8px; margin-top: 2px;">{{ product.barcode }}</div>
+            <div style="font-weight: normal; font-size: 7px;">{{ product.product_name }} {{ product.weight }}g | {{ product.size }}</div>
         </div>
         {% endif %}
         {% endfor %}
     </div>
-
+    
+    <!-- Printed Products -->
     <h4 class="mt-4 text-center">Printed Products</h4>
     <div class="sticker-container" style="display: flex; flex-wrap: wrap; justify-content: center;">
         {% for product in products %}
         {% if product.printed %}
-        <div class="sticker" style="width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center;">
-            <div style="font-weight: bold;">{{ product.barcode }}</div>
-            <div style="font-weight: bold;">{{ product.product_name }} | {{ product.weight }}g | {{ product.size }}</div>
-            <div>{{ product.karat }} | {{ product.gold_type }} | {{ product.category }}</div>
+        <div class="sticker" data-product-id="{{ product.id }}" style="width: 1in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center;">
+            <img src="{{ url_for('generate_barcode_image', barcode_data=product.barcode) }}" alt="Barcode" style="width: 100%; height: auto;">
+            <div style="font-weight: bold; font-size: 8px; margin-top: 2px;">{{ product.barcode }}</div>
+            <div style="font-weight: normal; font-size: 7px;">{{ product.product_name }} {{ product.weight }}g | {{ product.size }}</div>
+            <button class="btn btn-warning btn-sm" title="Reprint Product" onclick="reprintProduct('{{ product.id }}')">Reprint</button>
         </div>
         {% endif %}
         {% endfor %}
     </div>
 
+    <!-- Search Results -->
+    <h4 class="mt-4 text-center">Search Results</h4>
+    <div class="sticker-container" id="search-results" style="display: flex; flex-wrap: wrap; justify-content: center;"></div>
+
+    <!-- Product Table -->
     <table class="table table-bordered table-striped mt-4">
         <thead>
             <tr>
@@ -62,17 +88,20 @@
                 <td>{{ item.barcode }}</td>
                 <td>
                     {% if item.printed %}
-                        <span class="text-success" title="Printed">&#x2714;</span>
+                        <span class="text-success">&#x2714;</span>
                     {% else %}
-                        <span class="text-danger" title="Not Printed">&#x2716;</span>
+                        <span class="text-danger">&#x2716;</span>
                     {% endif %}
                 </td>
                 <td>
                     {% if not item.printed %}
-                    <button class="btn btn-info btn-sm print-btn" data-product-id="{{ item.id }}" title="Print Product">
-                        <i class="fas fa-print"></i>
-                    </button>                    
+                    <button class="btn btn-info btn-sm" onclick="printSingleProduct('{{ item.id }}')">
+                        <i class="fas fa-print"></i> Print
+                    </button>
                     {% endif %}
+                    <button class="btn btn-warning btn-sm" onclick="regenerateSticker('{{ item.id }}')">
+                        Regenerate
+                    </button>
                 </td>
             </tr>
             {% endfor %}
@@ -81,66 +110,102 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Attach click event to all buttons with the class 'print-btn'
-    const printButtons = document.querySelectorAll('.print-btn');
-    printButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const productId = this.getAttribute('data-product-id');
-            confirmPrint(productId);
-        });
-    });
-});
-function confirmPrint(productId) {
-    const confirmAction = confirm("Are you sure you want to print this product?");
-    if (confirmAction) {
-        // Send AJAX request to update printed status
-        fetch('/update_printed_status', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ product_ids: [productId] })
-        }).then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+// Search products by barcode
+function searchProducts() {
+    const barcode = document.getElementById('search-bar').value.trim();
+    const resultsContainer = document.getElementById('search-results');
+    resultsContainer.innerHTML = '';
+
+    if (!barcode) return;
+
+    fetch(`/search_product?barcode=${encodeURIComponent(barcode)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.length) {
+                resultsContainer.innerHTML = '<div class="text-center">No matching products found.</div>';
+                return;
             }
-            return response.json();
-        }).then(data => {
-            console.log(data.message); // Handle success message
-            location.reload(); // Reload the page to update printed status
-        }).catch((error) => {
-            console.error('Error:', error);
-        });
-    }
+            data.forEach(item => {
+                resultsContainer.innerHTML += `
+                    <div class="sticker" style="width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px;">
+                        <div style="font-weight: bold;">${item.barcode}</div>
+                        <div>${item.product_name} | ${item.weight}g | ${item.size}</div>
+                        <div>${item.karat} | ${item.gold_type} | ${item.category}</div>
+                        <button class="btn btn-warning btn-sm" onclick="regenerateSticker('${item.id}')">Regenerate</button>
+                    </div>
+                `;
+            });
+        })
+        .catch(error => console.error('Error fetching products:', error));
 }
 
+// Batch print all unprinted stickers
 function batchPrint() {
-    // Logic for batch printing goes here
-    const productIds = Array.from(document.querySelectorAll('.sticker-container .sticker')).map(sticker => {
-        return sticker.querySelector('div').textContent; // Adjust this to get the correct product ID
-    });
+    const unprintedStickers = document.querySelectorAll('.sticker[data-product-id]:not([data-printed="true"])');
+    if (!unprintedStickers.length) {
+        alert("No unprinted products available for batch printing.");
+        return;
+    }
 
+    const productIds = Array.from(unprintedStickers).map(sticker => sticker.getAttribute('data-product-id'));
+    openPrintWindow(Array.from(unprintedStickers));
+
+    updatePrintedStatus(productIds);
+}
+
+// Print a single product's sticker
+function printSingleProduct(productId) {
+    const sticker = document.querySelector(`.sticker[data-product-id="${productId}"]`);
+    if (!sticker) return;
+
+    openPrintWindow([sticker]);
+    updatePrintedStatus([productId]);
+}
+
+// Open a print window with provided stickers
+function openPrintWindow(stickers) {
+    const printWindow = window.open('', '_blank', 'width=600,height=400');
+    let content = `<html><head><title>Print Stickers</title>
+                   <style>
+                       .sticker { width: 1.5in; height: 0.5in; border: 1px solid #000; margin: 2px; padding: 2px; font-size: 8px; text-align: center; display: inline-block; }
+                       @media print { @page { margin: 0; } }
+                   </style></head><body style="display: flex; flex-wrap: wrap; justify-content: center;">`;
+
+    stickers.forEach(sticker => content += sticker.outerHTML);
+    content += '</body></html>';
+    
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Update printed status after printing
+function updatePrintedStatus(productIds) {
     fetch('/update_printed_status', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token() }}'
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
         body: JSON.stringify({ product_ids: productIds })
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    }).then(data => {
-        console.log(data.message); // Handle success message
-        location.reload(); // Reload the page to update printed status
-    }).catch((error) => {
-        console.error('Error:', error);
-    });
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data.message);
+        location.reload();
+    })
+    .catch(error => console.error('Error updating printed status:', error));
+}
+
+// Regenerate sticker for a product
+function regenerateSticker(productId) {
+    fetch(`/regenerate_sticker/${productId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert("Sticker has been regenerated!");
+        location.reload();
+    })
+    .catch(error => console.error('Error regenerating sticker:', error));
 }
 </script>
-
 {% endblock %}

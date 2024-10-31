@@ -820,6 +820,7 @@ def inventory_report():
 
     return render_template('inventory_report.html', low_stock_items=low_stock_items)
 
+
 @app.route('/sales_report', methods=['GET', 'POST'])
 @login_required
 def sales_report():
@@ -830,38 +831,43 @@ def sales_report():
     start_date = request.args.get('start_date', '2023-01-01')
     end_date = request.args.get('end_date', datetime.now().strftime('%Y-%m-%d'))
 
+    # Validate date format
+    try:
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+    except ValueError:
+        flash("Invalid date format. Please use YYYY-MM-DD.", 'error')
+        return redirect(url_for('sales_report'))
+
+    if start_date_obj > end_date_obj:
+        flash("Start date must be before end date.", 'error')
+        return redirect(url_for('sales_report'))
+
     # Initialize sales data dictionary
     sales_data = {}
 
-    # Query for daily sales
-    daily_sales_query = db.session.query(
-        func.strftime('%Y-%m-%d', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
+    # Common function to fetch sales data based on a grouping strategy
+    def fetch_sales_data(period_format):
+        return db.session.query(
+            func.strftime(period_format, SoldProduct.date_sold).label('period'),
+            func.sum(SoldProduct.total_price).label('total_sales')
+        ).group_by('period').order_by('period').all()
 
-    # Query for weekly sales
-    weekly_sales_query = db.session.query(
-        func.strftime('%Y-%W', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
-
-    # Query for monthly sales
-    monthly_sales_query = db.session.query(
-        func.strftime('%Y-%m', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
-
-    # Query for yearly sales
-    yearly_sales_query = db.session.query(
-        func.strftime('%Y', SoldProduct.date_sold).label('period'),
-        func.sum(SoldProduct.total_price).label('total_sales')
-    ).group_by('period').order_by('period').all()
+    # Query for sales based on time frame
+    if time_frame == 'daily':
+        sales_query = fetch_sales_data('%Y-%m-%d')
+    elif time_frame == 'weekly':
+        sales_query = fetch_sales_data('%Y-%W')
+    elif time_frame == 'monthly':
+        sales_query = fetch_sales_data('%Y-%m')
+    elif time_frame == 'yearly':
+        sales_query = fetch_sales_data('%Y')
+    else:
+        flash("Invalid time frame selected.", 'error')
+        return redirect(url_for('sales_report'))
 
     # Convert query results to list of dictionaries
-    sales_data['daily'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in daily_sales_query]
-    sales_data['weekly'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in weekly_sales_query]
-    sales_data['monthly'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in monthly_sales_query]
-    sales_data['yearly'] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in yearly_sales_query]
+    sales_data[time_frame] = [{'period': period, 'total_sales': float(total_sales)} for period, total_sales in sales_query]
 
     # Prepare labels and data for the chart based on the selected time frame
     labels = [entry['period'] for entry in sales_data.get(time_frame, [])]
@@ -876,6 +882,10 @@ def sales_report():
     total_sales = sum(sale.total_price for sale in sales_records)
     total_products_sold = len(sales_records)
 
+    # Check if there are no sales records found
+    if total_products_sold == 0:
+        flash("No sales records found for the selected date range.", 'info')
+
     # Render template with both sales summary and detailed records
     return render_template(
         'sales_report.html',
@@ -889,7 +899,6 @@ def sales_report():
         total_sales=total_sales,
         total_products_sold=total_products_sold
     )
-    
 
 # Route for customer report (accessible to admin and staff)
 @app.route('/customer-report', methods=['GET'])
@@ -903,6 +912,7 @@ def customer_report():
 
     return render_template('customer_report.html', top_customers=top_customers)
 
+
 # Route for financial report (accessible to admin and staff)
 @app.route('/financial-report', methods=['GET'])
 @login_required
@@ -913,20 +923,76 @@ def financial_report():
 
     # Calculate total sales and expenses for the given date range
     total_sales = db.session.query(func.sum(SoldProduct.total_price)).filter(
-        SoldProduct.date_sold.between(start_date, end_date)).scalar()
+        SoldProduct.date_sold.between(start_date, end_date)).scalar() or 0
 
     total_expenses = db.session.query(func.sum(Expense.total_price)).filter(
-        Expense.time_bought.between(start_date, end_date)).scalar()
+        Expense.time_bought.between(start_date, end_date)).scalar() or 0
 
-    profit = total_sales - total_expenses if total_sales and total_expenses else 0
+    profit = total_sales - total_expenses
 
     return render_template('financial_report.html', profit=profit, total_sales=total_sales, total_expenses=total_expenses)
 
 @app.route('/reports')
 @login_required
 def reports_dashboard():
-    return render_template('reports.html')
+    # Initialize data for various reports
+    report_data = {
+        'sales_report': [],
+        'inventory_report': [],
+        'customer_report': [],
+        'financial_report': {}
+    }
 
+    # Fetch data for the sales report
+    try:
+        sales_data = db.session.query(
+            SoldProduct.date_sold,
+            func.sum(SoldProduct.total_price).label('total_sales')
+        ).group_by(SoldProduct.date_sold).all()
+
+        report_data['sales_report'] = [{'date': date, 'total_sales': total_sales} for date, total_sales in sales_data]
+    except Exception as e:
+        flash(f"Error fetching sales data: {str(e)}", 'error')
+
+    # Fetch data for the inventory report (adjust based on your Inventory model)
+    try:
+        low_stock_threshold = 5
+        low_stock_items = db.session.query(
+            Inventory.product_name,
+            func.sum(Inventory.quantity).label('total_stock')
+        ).group_by(Inventory.product_name).having(func.sum(Inventory.quantity) < low_stock_threshold).all()
+
+        report_data['inventory_report'] = [{'product_name': name, 'total_stock': total_stock} for name, total_stock in low_stock_items]
+    except Exception as e:
+        flash(f"Error fetching inventory data: {str(e)}", 'error')
+
+    # Fetch data for the customer report
+    try:
+        top_customers = db.session.query(
+            SoldProduct.customer_name,
+            func.sum(SoldProduct.total_price).label('total_spent')
+        ).group_by(SoldProduct.customer_name).order_by(func.sum(SoldProduct.total_price).desc()).limit(10).all()
+
+        report_data['customer_report'] = [{'customer_name': name, 'total_spent': total_spent} for name, total_spent in top_customers]
+    except Exception as e:
+        flash(f"Error fetching customer data: {str(e)}", 'error')
+
+    # Fetch data for the financial report
+    try:
+        total_sales = db.session.query(func.sum(SoldProduct.total_price)).scalar() or 0
+        total_expenses = db.session.query(func.sum(Expense.total_price)).scalar() or 0
+        profit = total_sales - total_expenses
+
+        report_data['financial_report'] = {
+            'total_sales': total_sales,
+            'total_expenses': total_expenses,
+            'profit': profit
+        }
+    except Exception as e:
+        flash(f"Error fetching financial data: {str(e)}", 'error')
+
+    # Render the reports template with the gathered data
+    return render_template('reports.html', report_data=report_data)
 
 if __name__ == '__main__':
     with app.app_context():

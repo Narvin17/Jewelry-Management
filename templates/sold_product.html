@@ -3,13 +3,14 @@
 {% block header %}
 <div class="d-flex justify-content-between align-items-center">
     <h1>Sales Records</h1>
-    <!-- Date Filter Form beside "Sales Records" -->
     <form method="GET" action="{{ url_for('sold_product') }}" class="form-inline">
         <label for="date_sold" class="mr-2">Select Date:</label>
         <select class="form-select" id="date_sold" name="date_sold" onchange="this.form.submit()" style="max-width: 200px;">
-            <option value="">All Dates</option>
+            <option value="all" {% if selected_date == "all" %}selected{% endif %}>All Dates</option>
             {% for date in available_dates %}
-                <option value="{{ date }}" {% if request.args.get('date_sold') == date %}selected{% endif %}>{{ date }}</option>
+                <option value="{{ date }}" {% if selected_date == date %}selected{% elif not selected_date and date == current_date %}selected{% endif %}>
+                    {{ date }}
+                </option>
             {% endfor %}
         </select>
     </form>
@@ -17,111 +18,86 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <!-- Search Bar for Barcode -->
-    <div class="input-group mb-3" style="max-width: 250px;">
-        <input type="text" class="form-control form-control-sm" placeholder="Search by Barcode..." name="barcode"
-               value="{{ request.args.get('barcode') }}" oninput="this.form.submit();" aria-label="Search by Barcode">
-        <input type="hidden" name="date_sold" value="{{ request.args.get('date_sold') }}">
-        <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="fas fa-search"></i></button>
-    </div>
-
-    {% if sales and request.args.get('date_sold') %}
-        <!-- Simple Statistics Overview -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-4 col-sm-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Total Sales</h5>
-                        <p class="card-text">₱{{ total_sales | default(0) | round(2) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Total Items Sold</h5>
-                        <p class="card-text">{{ total_items_sold | default(0) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Average Price per Gram</h5>
-                        <p class="card-text">₱{{ average_price_per_gram | default(0) | round(2) }}</p>
-                    </div>
+{% if sales %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-4 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Sales</h5>
+                    <p class="card-text">₱{{ total_sales | default(0) | round(2) }}</p>
                 </div>
             </div>
         </div>
-    {% endif %}
+        <div class="col-md-4 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Items Sold</h5>
+                    <p class="card-text">{{ total_items_sold | default(0) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Average Price per Gram</h5>
+                    <p class="card-text">₱{{ average_price_per_gram | default(0) | round(2) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
 
+<div class="container mt-4">
     <div class="table-responsive">
-        <table class="table table-bordered table-striped">
+        <table class="table table-bordered table-striped align-middle">
             <thead class="table-dark">
                 <tr>
+                    <th style="width: 15px; font-size: 0.65rem;">ID</th>
                     <th>Product Name</th>
-                    <th>Category</th>
-                    <th>Weight (grams)</th>
-                    <th>Price per Gram (₱)</th>
-                    <th>Total Price (₱)</th>
                     <th>Karat</th>
                     <th>Gold Type</th>
+                    <th>Category</th>
+                    <th>Weight (g)</th>
                     <th>Size</th>
+                    <th>(₱) per Gram</th>
+                    <th>Total Price</th>
                     <th>Barcode</th>
                     <th>Date Sold</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% if sales %}
-                    {% for sale in sales %}
-                    <tr>
-                        <td>{{ sale.product_name or 'N/A' }}</td>
-                        <td>{{ sale.category or 'N/A' }}</td>
-                        <td>{{ sale.weight or 'N/A' }}</td>
-                        <td>
-                            {% set price_per_gram = 0 %}
-                            {% if sale.karat == '18K' and sale.gold_type == 'Chinese Gold' %}
-                                {% set price_per_gram = prices.chinese_18k %}
-                            {% elif sale.karat == '21K' and sale.gold_type == 'Chinese Gold' %}
-                                {% set price_per_gram = prices.chinese_21k %}
-                            {% elif sale.karat == '18K' and sale.gold_type == 'Saudi Gold' %}
-                                {% set price_per_gram = prices.saudi_18k %}
-                            {% elif sale.karat == '21K' and sale.gold_type == 'Saudi Gold' %}
-                                {% set price_per_gram = prices.saudi_21k %}
-                            {% elif sale.total_price is not none and sale.weight > 0 %}
-                                {% set price_per_gram = (sale.total_price / sale.weight) | round(2) %}
-                            {% endif %}
-                            ₱{{ price_per_gram | default(0) }}
-                        </td>
-                        <td>
-                            ₱{{ (price_per_gram * sale.weight) | default(0) | round(2) if sale.weight else sale.total_price or 'N/A' }}
-                        </td>
-                        <td>{{ sale.karat or 'N/A' }}</td>
-                        <td>{{ sale.gold_type or 'N/A' }}</td>
-                        <td>{{ sale.size or 'N/A' }}</td>
-                        <td>{{ sale.barcode or 'N/A' }}</td>
-                        <td>{{ sale.date_sold.strftime('%Y-%m-%d') if sale.date_sold else 'N/A' }}</td>
-                        <td>
-                            {% if sale.id is not none %}
-                                <a href="{{ url_for('view_sold_product', sale_id=sale.id) }}" class="btn btn-info btn-sm">View</a>
-                                <form action="{{ url_for('void_sale', sale_id=sale.id) }}" method="POST" style="display:inline;" onsubmit="return confirmVoid();">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-danger btn-sm">Void</button>
-                                </form>                        
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="11" class="text-center">No sales records available.</td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+            {% if sales %}
+                {% for sale in sales %}
+                <tr>
+                    <td style="width: 15px; font-size: 0.5rem;">{{ sale.product_id }}</td>
+                    <td>{{ sale.product_name or 'N/A' }}</td>
+                    <td>{{ sale.karat or 'N/A' }}</td>
+                    <td>{{ sale.gold_type or 'N/A' }}</td>
+                    <td>{{ sale.category or 'N/A' }}</td>
+                    <td>{{ sale.weight or 'N/A' }}</td>
+                    <td>{{ sale.size or 'N/A' }}</td>
+                    <td>₱{{ (sale.price_per_gram or 0) | round(2) }}</td>
+                    <td>₱{{ (sale.total_price or 0) | round(2) }}</td>
+                    <td>{{ sale.barcode or 'N/A' }}</td>
+                    <td>{{ sale.date_sold.strftime('%Y-%m-%d') if sale.date_sold else 'N/A' }}</td>
+                    <td>
+                        <a href="{{ url_for('view_sold_product', sale_id=sale.id) }}" class="btn btn-info btn-sm">View</a>
+                        <form action="{{ url_for('void_sale', sale_id=sale.id) }}" method="POST" style="display:inline;" onsubmit="return confirmVoid();">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger btn-sm">Void</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="11" class="text-center">No sales records available.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
 </div>
 
 <script>

@@ -1,0 +1,34 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container" style="max-width: 600px; margin-top: 50px;">
+    <h1 class="text-center mb-4">Update Gold Prices</h1>
+    <form method="POST" class="p-4 border rounded shadow-sm" style="background-color: #f8f9fa;">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group mb-3">
+            {{ form.chinese_18k.label(class="form-label") }}
+            {{ form.chinese_18k(class="form-control", placeholder="Enter price for Chinese 18k") }}
+        </div>
+        
+        <div class="form-group mb-3">
+            {{ form.chinese_21k.label(class="form-label") }}
+            {{ form.chinese_21k(class="form-control", placeholder="Enter price for Chinese 21k") }}
+        </div>
+        
+        <div class="form-group mb-3">
+            {{ form.saudi_18k.label(class="form-label") }}
+            {{ form.saudi_18k(class="form-control", placeholder="Enter price for Saudi 18k") }}
+        </div>
+        
+        <div class="form-group mb-4">
+            {{ form.saudi_21k.label(class="form-label") }}
+            {{ form.saudi_21k(class="form-control", placeholder="Enter price for Saudi 21k") }}
+        </div>
+        
+        <div class="text-center">
+            {{ form.submit(class="btn btn-primary btn-lg px-5") }}
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -53,8 +53,8 @@ body {
 }
 
 .sidebar ul li {
-    padding: 5px 5px; /* Reduced padding to make the items closer together */
-    font-size: 0.9em; /* Reduced font size to make the items smaller */
+    padding: 2px 2px; /* Reduced padding to make the items closer together */
+    font-size: 0.8em; /* Reduced font size to make the items smaller */
     border-bottom: 1px solid #bddeff;
 }
 
@@ -320,5 +320,159 @@ td:last-child {
     .card {
         width: 100%;
         margin-bottom: 10px;
+    }
+}
+
+/* ========================= */
+/* Statistics Card Styles    */
+/* ========================= */
+.stat-card {
+    background: #f0f4fa; /* Light background color for clarity */
+    border: 1px solid #d1e3f3;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card .card-body {
+    padding: 10px;
+}
+
+.stat-card .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0071bc;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.stat-card .card-text {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #003c78;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card:nth-child(1) .card-text {
+    color: #28a745; /* Total Sales - green */
+}
+
+.stat-card:nth-child(2) .card-text {
+    color: #fd7e14; /* Total Items Sold - orange */
+}
+
+.stat-card:nth-child(3) .card-text {
+    color: #17a2b8; /* Average Price per Gram - teal */
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+    .stat-card {
+        margin-bottom: 10px;
+        width: 100%;
+    }
+}
+/* ========================= */
+/* Admin Power Card Styles   */
+/* ========================= */
+.admin-card {
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Soft shadow for a sleek look */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    padding: 0.75rem; /* Compact padding */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 130px; /* Reduced height for smaller cards */
+    max-width: 100%; /* Ensures responsive behavior */
+    color: #333333;
+    margin: 0.5rem; /* Spacing between cards */
+}
+
+.admin-card .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-card .card-text {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0.2rem 0;
+}
+
+/* Hover effect for professional elevation */
+.admin-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Colors for Specific Card Variants */
+.admin-card.bg-primary {
+    background-color: #007bff;
+    color: #ffffff;
+}
+
+.admin-card.bg-success {
+    background-color: #28a745;
+    color: #ffffff;
+}
+
+.admin-card.bg-warning {
+    background-color: #ffc107;
+    color: #343a40;
+}
+
+.admin-card.bg-info {
+    background-color: #17a2b8;
+    color: #ffffff;
+}
+
+.admin-card.bg-secondary {
+    background-color: #6c757d;
+    color: #ffffff;
+}
+
+/* Button Styles for Actions */
+.admin-card .btn-light {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #212529;
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+    background-color: #f8f9fa;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-top: 0.5rem;
+}
+
+.admin-card .btn-light:hover {
+    background-color: #e2e6ea;
+    color: #000000;
+}
+
+/* Optional: Extra style for responsiveness */
+@media (max-width: 768px) {
+    .admin-card {
+        min-height: 110px;
+        padding: 0.5rem;
+    }
+
+    .admin-card .card-title {
+        font-size: 0.9rem;
+    }
+
+    .admin-card .card-text {
+        font-size: 1.2rem;
     }
 }

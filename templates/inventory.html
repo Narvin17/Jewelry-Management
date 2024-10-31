@@ -11,59 +11,12 @@
             <button class="btn btn-outline-secondary btn-sm" type="button"><i class="fas fa-search"></i></button>
         </div>
 
-        <!-- Gold Prices Form -->
-        <form action="{{ url_for('update_gold_prices') }}" method="POST" class="row g-2" style="font-size: 0.8rem; margin-right: 1rem;">
-            {{ form.hidden_tag() }}
-            <div class="col-md-3">
-                {{ form.chinese_18k.label(class="form-label") }}
-                {{ form.chinese_18k(class="form-control form-control-sm", placeholder="Chinese 18K Price") }}
-                {% if form.chinese_18k.errors %}
-                    <div class="invalid-feedback d-block">
-                        {% for error in form.chinese_18k.errors %}
-                            {{ error }}
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-            <div class="col-md-3">
-                {{ form.chinese_21k.label(class="form-label") }}
-                {{ form.chinese_21k(class="form-control form-control-sm", placeholder="Chinese 21K Price") }}
-                {% if form.chinese_21k.errors %}
-                    <div class="invalid-feedback d-block">
-                        {% for error in form.chinese_21k.errors %}
-                            {{ error }}
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-            <div class="col-md-3">
-                {{ form.saudi_18k.label(class="form-label") }}
-                {{ form.saudi_18k(class="form-control form-control-sm", placeholder="Saudi 18K Price") }}
-                {% if form.saudi_18k.errors %}
-                    <div class="invalid-feedback d-block">
-                        {% for error in form.saudi_18k.errors %}
-                            {{ error }}
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-            <div class="col-md-3">
-                {{ form.saudi_21k.label(class="form-label") }}
-                {{ form.saudi_21k(class="form-control form-control-sm", placeholder="Saudi 21K Price") }}
-                {% if form.saudi_21k.errors %}
-                    <div class="invalid-feedback d-block">
-                        {% for error in form.saudi_21k.errors %}
-                            {{ error }}
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-            <div class="col-12 text-end mt-2">
-                {{ form.submit(class="btn btn-success btn-sm") }}
-            </div>
-        </form>
+        <!-- Button to Update Gold Prices -->
+        <a href="{{ url_for('update_gold_prices') }}" class="btn btn-secondary btn-sm" style="margin-right: 1rem;">
+            Update Gold Prices
+        </a>
 
-        <button type="button" class="btn btn-primary btn-sm" id="inventoryTreeBtn">
+        <button type="button" class="btn btn-primary btn-sm" id="inventoryTreeBtn" data-bs-toggle="modal" data-bs-target="#inventoryTreeModal">
             View Inventory Tree
         </button>
     </div>
@@ -78,8 +31,7 @@ function filterTableByBarcode() {
     let rows = document.querySelectorAll("tbody tr");
 
     rows.forEach(row => {
-        let barcode = row.querySelector("td:nth-child(9)").textContent.toLowerCase();
-
+        let barcode = row.querySelector("td:nth-child(10)").textContent.toLowerCase();
         if (barcode.includes(input)) {
             row.style.display = "";
         } else {
@@ -87,81 +39,88 @@ function filterTableByBarcode() {
         }
     });
 }
+
+// Function to populate and show the Mark as Sold modal
+function openMarkAsSoldModal(productId) {
+    document.getElementById('modal-product-id').value = productId;
+    document.getElementById('customer-name').value = '';
+    document.getElementById('sold-by').value = '';
+    var markAsSoldModal = new bootstrap.Modal(document.getElementById('markAsSoldModal'), {
+        keyboard: false
+    });
+    markAsSoldModal.show();
+}
 </script>
 
 <!-- Inventory Table -->
-<div class="container mt-4">
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
+<div class="container mt-4" style="padding-top: 0; margin-top: 0;">
+    <div class="table-responsive" style="margin-top: 0;">
+        <table class="table table-bordered table-striped align-middle" style="margin-top: 0;">
             <thead class="table-dark">
                 <tr>
+                    <th style="width: 15px; font-size: 0.65rem;">ID</th>
                     <th>Product Name</th>
-                    <th>Category</th>
-                    <th>Price (₱)</th>
                     <th>Karat</th>
                     <th>Gold Type</th>
+                    <th>Category</th>
                     <th>Weight</th>
-                    <th>Size</th> <!-- Show size -->
+                    <th>Size</th>
                     <th>(₱) per gram</th>
+                    <th>Price (₱)</th>
                     <th>Barcode</th>
                     <th style="width: 200px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr>
+                <tr class="hover-row">
+                    <th style="width: 15px; font-size: 0.5rem;">{{ item.id }}</th>
                     <td>{{ item.product_name }}</td>
-                    <td>{{ item.category }}</td>
-                    <td>
-                        {% if item.karat == '18K' and item.gold_type == 'Chinese Gold' %}
-                            ₱{{ "%.2f"|format(prices.chinese_18k * item.weight) }}
-                        {% elif item.karat == '21K' and item.gold_type == 'Chinese Gold' %}
-                            ₱{{ "%.2f"|format(prices.chinese_21k * item.weight) }}
-                        {% elif item.karat == '18K' and item.gold_type == 'Saudi Gold' %}
-                            ₱{{ "%.2f"|format(prices.saudi_18k * item.weight) }}
-                        {% elif item.karat == '21K' and item.gold_type == 'Saudi Gold' %}
-                            ₱{{ "%.2f"|format(prices.saudi_21k * item.weight) }}
-                        {% else %}
-                            ₱{{ "%.2f"|format(item.price_per_unit) }}
-                        {% endif %}
-                    </td>
                     <td>{{ item.karat }}</td>
                     <td>{{ item.gold_type }}</td>
-                    <td>{{ item.weight }}</td>
-                    <td>{{ item.size or 'No size available' }}</td> <!-- Display size or fallback message -->
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.weight }} g</td>
+                    <td>{{ item.size or 'No size available' }}</td>
                     <td>
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#editPriceModal"
-                           data-id="{{ item.id }}"
-                           data-price="{% if item.karat == '18K' and item.gold_type == 'Chinese Gold' %}{{ prices.chinese_18k }}{% elif item.karat == '21K' and item.gold_type == 'Chinese Gold' %}{{ prices.chinese_21k }}{% elif item.karat == '18K' and item.gold_type == 'Saudi Gold' %}{{ prices.saudi_18k }}{% elif item.karat == '21K' and item.gold_type == 'Saudi Gold' %}{{ prices.saudi_21k }}{% else %}{{ "%.2f"|format(item.price_per_unit) }}{% endif %}"
-                           class="price-link">
-                            ₱{% if item.karat == '18K' and item.gold_type == 'Chinese Gold' %}{{ "%.2f"|format(prices.chinese_18k) }}{% elif item.karat == '21K' and item.gold_type == 'Chinese Gold' %}{{ "%.2f"|format(prices.chinese_21k) }}{% elif item.karat == '18K' and item.gold_type == 'Saudi Gold' %}{{ "%.2f"|format(prices.saudi_18k) }}{% elif item.karat == '21K' and item.gold_type == 'Saudi Gold' %}{{ "%.2f"|format(prices.saudi_21k) }}{% else %}{{ "%.2f"|format(item.price_per_unit) }}{% endif %}
-                        </a>
+                        {% set price_key = item.gold_type + '_' + item.karat %}
+                        {% if price_key in prices %}
+                            ₱{{ "%.2f"|format(prices[price_key] * item.weight) }}
+                        {% else %}
+                            ₱{{ "%.2f"|format(item.price_per_unit or 0) }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if price_key in prices %}
+                            ₱ {{ "%.2f"|format(prices[price_key]) }}
+                        {% else %}
+                            ₱ 0.00
+                        {% endif %}
                     </td>
                     <td>{{ item.barcode }}</td>
                     <td>
-                        <div class="actions">
-                            <a href="{{ url_for('edit_product', product_id=item.id) }}" class="btn btn-warning btn-sm" data-bs-toggle="tooltip" title="Edit Product">
+                        <div class="actions d-flex align-items-center">
+                            {% if item.status == 'Sold' %}
+                                <span class="text-danger me-2" data-bs-toggle="tooltip" title="Sold">
+                                    <i class="fas fa-times-circle"></i>
+                                </span>
+                            {% elif item.status == 'Available' %}
+                                <span class="text-success me-2" data-bs-toggle="tooltip" title="Available">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                            {% endif %}
+                            <a href="{{ url_for('edit_product', product_id=item.id) }}" class="btn btn-warning btn-sm me-2" data-bs-toggle="tooltip" title="Edit Product">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form action="{{ url_for('mark_as_sold', product_id=item.id) }}" method="POST" style="display:inline;" data-bs-toggle="tooltip" title="Mark as Sold" onsubmit="return confirm('Are you sure you want to mark this product as sold?');">
-                                {{ form.hidden_tag() }}
-                                <button type="submit" class="btn btn-success btn-sm">
-                                    <i class="fas fa-dollar-sign"></i>
-                                </button>
-                            </form>
-                            <form action="{{ url_for('remove_product', product_id=item.id) }}" method="POST" style="display:inline;" data-bs-toggle="tooltip" title="Remove Product" onsubmit="return confirm('Are you sure you want to remove this product?');">
-                                {{ form.hidden_tag() }}
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="tooltip" title="Mark as Sold" onclick="openMarkAsSoldModal('{{ item.id }}')">
+                                <i class="fas fa-dollar-sign"></i>
+                            </button>
                             {% if not item.printed %}
-                                <span class="text-danger" title="Needs Printing">
-                                    <i class="fas fa-print"></i>  <!-- Red cross for not printed -->
+                                <span class="text-danger ms-2" data-bs-toggle="tooltip" title="Needs Printing">
+                                    <i class="fas fa-print"></i>
                                 </span>
                             {% else %}
-                                <span class="text-success" title="Printed">
-                                    <i class="fas fa-check"></i>  <!-- Green check for printed -->
+                                <span class="text-success ms-2" data-bs-toggle="tooltip" title="Printed">
+                                    <i class="fas fa-check"></i>
                                 </span>
                             {% endif %}
                         </div>
@@ -173,7 +132,148 @@ function filterTableByBarcode() {
     </div>
 </div>
 
+<!-- Available Products Section -->
+<div class="container mt-4">
+    <div class="row">
+        {% for product in available_products %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="product-item card shadow-sm">
+                    <div class="card-body">
+                        <h3>{{ product.product_name }}</h3>
+                        <p>Category: {{ product.category }}</p>
+                        <p>Price: ₱{{ "%.2f"|format(product.price_per_unit) }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
 
-<!-- Modals and JavaScript logic -->
-<!-- (Same modal and JS logic as before) -->
+<!-- Mark as Sold Modal -->
+<div class="modal fade" id="markAsSoldModal" tabindex="-1" aria-labelledby="markAsSoldModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('mark_as_sold', product_id='') }}" method="POST" id="markSoldForm">
+                {{ form.hidden_tag() }} <!-- CSRF Token -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="markAsSoldModalLabel">Mark as Sold</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="product_id" id="modal-product-id" value="">
+                    <div class="mb-3">
+                        <label for="customer-name" class="form-label">Customer Name:</label>
+                        <input type="text" class="form-control" id="customer-name" name="customer_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sold-by" class="form-label">Sold By:</label>
+                        <input type="text" class="form-control" id="sold-by" name="sold_by" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Mark as Sold</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openMarkAsSoldModal(productId) {
+        document.getElementById('modal-product-id').value = productId;
+        document.getElementById('markSoldForm').action = "{{ url_for('mark_as_sold', product_id='') }}" + productId;
+        var markAsSoldModal = new bootstrap.Modal(document.getElementById('markAsSoldModal'));
+        markAsSoldModal.show();
+    }
+</script>
+
+<!-- Inventory Tree Modal -->
+<div class="modal fade" id="inventoryTreeModal" tabindex="-1" aria-labelledby="inventoryTreeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inventoryTreeModalLabel">Inventory Tree</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="accordion" id="inventoryAccordion">
+                    {% for category, data in inventory_tree.items() %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading-{{ category }}">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ category }}" aria-expanded="false" aria-controls="collapse-{{ category }}">
+                                    {{ category }} ({{ data.count }} Products)
+                                </button>
+                            </h2>
+                            <div id="collapse-{{ category }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ category }}" data-bs-parent="#inventoryAccordion">
+                                <div class="accordion-body">
+                                    {% if data.karat %}
+                                        {% for karat, gold_types in data.karat.items() %}
+                                            <strong>{{ karat }} Karat</strong>
+                                            <ul>
+                                                {% for gold_type, gold_data in gold_types.gold_type.items() %}
+                                                    <li>{{ gold_type }}
+                                                        <ul>
+                                                            {% for product_key, product in gold_data.items() %}
+                                                                <li>
+                                                                    <input type="checkbox" id="product-{{ product.id }}" class="form-check-input" value="{{ product.id }}">
+                                                                    <label for="product-{{ product.id }}" class="form-check-label">{{ product.product_name }} - Barcode: {{ product.barcode }}</label>
+                                                                </li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p>No products available in this category.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="submitInventoryTree()">Submit Count</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function submitInventoryTree() {
+        const checkboxes = document.querySelectorAll('.form-check-input:checked');
+        let selectedProducts = [];
+
+        checkboxes.forEach(checkbox => {
+            selectedProducts.push(checkbox.value);
+        });
+
+        // Handle the selected product IDs as needed
+        console.log(selectedProducts); // For demonstration
+        alert("Count submitted: " + selectedProducts.join(', ')); // Replace with actual submission logic
+    }
+</script>
+
+<!-- Ensure Bootstrap JS is included -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Tooltip Initialization -->
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+</script>
+
+<style>
+    /* CSS for row hover effect */
+    tbody tr:hover {
+        background-color: #d1ecf1; /* Light cyan background on hover */
+        cursor: pointer; /* Change cursor to pointer */
+    }
+</style>
+
 {% endblock %}

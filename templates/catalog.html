@@ -1,3 +1,4 @@
+<!-- templates/catalog.html -->
 {% extends 'layout.html' %}
 
 {% block header %}
@@ -19,25 +20,29 @@
             <div class="p-3" style="border: 1px solid #dee2e6; border-radius: 8px; background-color: #f8f9fa; max-width: 500px;">
                 <ul class="list-unstyled mb-0">
                     <li class="d-flex mb-2">
-                        <span style="flex-grow: 1;text-align: right;">Chinese 18K:</span>
-                        <strong class="text-success" style="margin-right: 50px;">₱{{ prices.chinese_18k }}</strong>
+                        <span style="flex-grow: 1; text-align: right;">Chinese 18K:</span>
+                        <strong class="text-success" style="margin-right: 50px;">₱{{ "%.2f"|format(prices.get('Chinese Gold_18K', 0)) }}</strong>
                         <span style="flex-grow: 1; text-align: right;">Saudi 18K:</span>
-                        <strong class="text-success">₱{{ prices.saudi_18k }}</strong>
+                        <strong class="text-success">₱{{ "%.2f"|format(prices.get('Saudi Gold_18K', 0)) }}</strong>
                     </li>
                     <li class="d-flex mb-2">
-                        <span style="flex-grow: 1;text-align: right;">Chinese 21K:</span>
-                        <strong class="text-success" style="margin-right: 50px;">₱{{ prices.chinese_21k }}</strong>
+                        <span style="flex-grow: 1; text-align: right;">Chinese 21K:</span>
+                        <strong class="text-success" style="margin-right: 50px;">₱{{ "%.2f"|format(prices.get('Chinese Gold_21K', 0)) }}</strong>
                         <span style="flex-grow: 1; text-align: right;">Saudi 21K:</span>
-                        <strong class="text-success">₱{{ prices.saudi_21k }}</strong>
+                        <strong class="text-success">₱{{ "%.2f"|format(prices.get('Saudi Gold_21K', 0)) }}</strong>
                     </li>
                 </ul>
             </div>
         </div>
     </div>
 
-    <!-- Search Field -->
+    <!-- Search Field and POS Button -->
     <div class="d-flex justify-content-start my-2">
-        <input type="text" name="search_query" class="form-control form-control-sm" placeholder="Search by Name" value="{{ search_query }}" style="max-width: 400px;">
+        <form class="d-flex" method="GET" action="{{ url_for('catalog') }}">
+            <input type="text" name="search_query" class="form-control form-control-sm" placeholder="Search by Name" value="{{ search_query }}" style="max-width: 400px;">
+            <button type="submit" class="btn btn-primary ms-2 btn-sm">Search</button>
+        </form>
+        <a href="{{ url_for('pos_view') }}" class="btn btn-success ms-2">Start Shopping</a>
     </div>
 </div>
 {% endblock %}
@@ -56,22 +61,22 @@
             </select>
         </div>
 
-        <!-- Karat Filter -->
-        <div class="col-lg-2 col-md-2">
-            <select name="karat" class="form-select form-select-sm">
-                <option value="all" {% if karat == 'all' %}selected{% endif %}>All Karats</option>
-                {% for karat_option in karats %}
-                    <option value="{{ karat_option }}" {% if karat == karat_option %}selected{% endif %}>{{ karat_option }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
         <!-- Gold Type Filter -->
         <div class="col-lg-2 col-md-2">
             <select name="gold_type" class="form-select form-select-sm">
                 <option value="all" {% if gold_type == 'all' %}selected{% endif %}>All Gold Types</option>
                 {% for gold in gold_types %}
                     <option value="{{ gold }}" {% if gold_type == gold %}selected{% endif %}>{{ gold }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Karat Filter -->
+        <div class="col-lg-2 col-md-2">
+            <select name="karat" class="form-select form-select-sm">
+                <option value="all" {% if karat == 'all' %}selected{% endif %}>All Karats</option>
+                {% for k in karats %}
+                    <option value="{{ k }}" {% if karat == k %}selected{% endif %}>{{ k }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -94,10 +99,8 @@
         <!-- Items Per Page Filter -->
         <div class="col-lg-1 col-md-1">
             <select name="per_page" class="form-select form-select-sm">
-                <option value="9" {% if per_page == 9 %}selected{% endif %}>9</option>
-                <option value="12" {% if per_page == 12 %}selected{% endif %}>12</option>
-                <option value="24" {% if per_page == 24 %}selected{% endif %}>24</option>
-                <option value="48" {% if per_page == 48 %}selected{% endif %}>48</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
             </select>
         </div>
 
@@ -109,50 +112,70 @@
 </div>
 
 <!-- Catalog Items Grouped by Name -->
-<div class="row">
-    {% for product_data in products %}
-    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-        <div class="card h-100 shadow-sm">
-            <img src="{{ product_data.product.image_url }}" class="card-img-top img-fluid" alt="{{ product_data.product.product_name }}" style="object-fit: cover; max-height: 200px;">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">{{ product_data.product.product_name }}</h5>
-                <p class="card-text">Total Stock: {{ product_data.stock }}</p>
-
-                <!-- Available Sizes and Weights -->
-                <button class="btn btn-info mt-auto btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#sizes-{{ loop.index }}">
-                    Available Sizes
-                </button>
-
-                <div class="collapse mt-2" id="sizes-{{ loop.index }}">
-                    <ul class="list-group list-group-flush">
-                        {% for variation in product_data.variations %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>Size:</strong> {{ variation.size }}
-                                <small class="text-muted">Weight: {{ variation.weight }}g</small> <!-- Added weight display -->
+<div class="container">
+    <div class="row">
+        {% for karat, gold_types in products.items() %}
+            {% for gold_type, categories in gold_types.items() %}
+                {% for category, product_names in categories.items() %}
+                    {% for product_name, product_data in product_names.items() %}
+                        <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="position-relative">
+                                    <img src="{{ url_for('static', filename=product_data.image_url) }}"
+                                         class="card-img-top img-fluid"
+                                         alt="{{ product_data.product.product_name }}"
+                                         style="object-fit: cover; max-height: 200px;">
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <h5 class="card-title">{{ product_data.product.product_name }}</h5>
+                                    <p class="card-text small text-muted">
+                                        {{ product_data.product.karat }}, {{ product_data.product.gold_type }}, {{ product_data.product.category }}
+                                    </p>
+                                    <p class="card-text small">Total Stock: {{ product_data.total_stock }}</p>
+                                    <!-- Button to View Available Sizes -->
+                                    <button class="btn btn-info mt-auto btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#sizes-{{ product_data.product.id }}">
+                                        Available Sizes
+                                    </button>
+                                    <!-- Available Sizes (Shown on collapse) -->
+                                    <div class="collapse mt-2" id="sizes-{{ product_data.product.id }}">
+                                        <ul class="list-group list-group-flush">
+                                            {% for size_weight, details in product_data.variations.items() %}
+                                                <li class="list-group-item d-flex justify-content-between align-items-center border rounded mb-2">
+                                                    <div class="me-3">
+                                                        <strong>Size:</strong> {{ details.size }} <br>
+                                                        <small class="text-muted">Weight: {{ details.weight }}g</small> <br>
+                                                        <small class="text-muted">Price: ₱{{ "%.2f"|format(details.price) }}</small>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <small class="text-muted">Stock: {{ details.stock }}</small>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
-                            <small class="text-muted">Stock: {{ variation.stock }}</small>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
 
 <!-- Pagination -->
+{% if total_pages > 1 %}
 <nav aria-label="Page navigation">
     <ul class="pagination justify-content-center">
         <li class="page-item {% if not previous_page %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('catalog', page=previous_page, category=category, price_min=price_min, price_max=price_max, sort_by=sort_by, karat=karat, gold_type=gold_type, search_query=search_query) }}">Previous</a>
+            <a class="page-link" href="{{ url_for('catalog', page=previous_page, **request.args) | replace('page=' ~ request.args.get('page', 1), 'page=' ~ previous_page) }}">Previous</a>
         </li>
         <li class="page-item {% if not next_page %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('catalog', page=next_page, category=category, price_min=price_min, price_max=price_max, sort_by=sort_by, karat=karat, gold_type=gold_type, search_query=search_query) }}">Next</a>
+            <a class="page-link" href="{{ url_for('catalog', page=next_page, **request.args) | replace('page=' ~ request.args.get('page', 1), 'page=' ~ next_page) }}">Next</a>
         </li>
     </ul>
 </nav>
+{% endif %}
 
 <!-- Recently Viewed Items -->
 <h4>Recently Viewed Items</h4>
@@ -160,7 +183,7 @@
     {% for product in recently_viewed %}
     <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
         <div class="card h-100">
-            <img src="{{ product.image_url }}" class="card-img-top img-fluid" alt="{{ product.product_name }}" style="object-fit: cover; max-height: 200px;">
+            <img src="{{ url_for('static', filename='images/' + product.product_name.replace(' ', '_') + '.png') }}" class="card-img-top img-fluid" alt="{{ product.product_name }}" style="object-fit: cover; max-height: 200px;">
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">{{ product.product_name }}</h5>
                 <a href="{{ url_for('view_product', product_id=product.id) }}" class="btn btn-primary mt-auto">View Details</a>
@@ -169,4 +192,35 @@
     </div>
     {% endfor %}
 </div>
+
+<!-- CSS for Hover Effect -->
+<style>
+    .card {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .additional-images {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .card:hover .additional-images {
+        display: flex;
+    }
+
+    .additional-images img {
+        width: 100%;
+        height: auto;
+        opacity: 0.5;
+    }
+</style>
+
 {% endblock %}

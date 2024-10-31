@@ -1,8 +1,234 @@
+<!-- templates/financial_report.html -->
 {% extends 'layout.html' %}
-{% block header %}Financial Report{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    /* Custom styles for Financial Report */
+    .report-header {
+        margin-bottom: 30px;
+    }
+    .card {
+        margin-bottom: 20px;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block header %}
+<div class="container my-4">
+    <h1 class="text-center fw-bold">Financial Report</h1>
+    <p class="text-center text-muted">Analyze income, expenses, and profit/loss</p>
+</div>
+{% endblock %}
+
 {% block content %}
-    <h3>Profit & Loss Report</h3>
-    <p><strong>Total Sales:</strong> ₱{{ total_sales }}</p>
-    <p><strong>Total Expenses:</strong> ₱{{ total_expenses }}</p>
-    <p><strong>Profit:</strong> ₱{{ profit }}</p>
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+</div>
+
+<div class="container">
+    <div class="row report-header">
+        <div class="col-md-4">
+            <div class="card text-white bg-success h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Total Sales</h5>
+                    <p class="card-text fs-4">₱{{ total_sales | float | round(2) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-danger h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Total Expenses</h5>
+                    <p class="card-text fs-4">₱{{ total_expenses | float | round(2) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-primary h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Profit</h5>
+                    <p class="card-text fs-4">₱{{ profit | float | round(2) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    Sales Over Time
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    Expenses Over Time
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="expensesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    Sales by Category
+                </div>
+                <div class="card-body">
+                    {% if sales_by_category %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Sales (₱)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category, amount in sales_by_category.items() %}
+                            <tr>
+                                <td>{{ category }}</td>
+                                <td>{{ amount | float | round(2) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted">No sales data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    Expenses by Category
+                </div>
+                <div class="card-body">
+                    {% if expenses_by_category %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Expenses (₱)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category, amount in expenses_by_category.items() %}
+                            <tr>
+                                <td>{{ category }}</td>
+                                <td>{{ amount | float | round(2) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted">No expenses data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Safely serialize the data to JSON format
+    const financialData = JSON.parse(`{{ {
+        "salesOverTime": sales_over_time,
+        "expensesOverTime": expenses_over_time,
+        "salesByCategory": sales_by_category,
+        "expensesByCategory": expenses_by_category
+    } | tojson | safe }}`);
+
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        const toastHTML = `
+            <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        const toastElement = toastContainer.lastElementChild;
+        const bsToast = new bootstrap.Toast(toastElement);
+        bsToast.show();
+        
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+
+    // Initialize Sales Over Time Chart
+    const ctxSales = document.getElementById('salesChart').getContext('2d');
+    const salesChart = new Chart(ctxSales, {
+        type: 'line',
+        data: {
+            labels: financialData.salesOverTime.labels,
+            datasets: [{
+                label: 'Sales (₱)',
+                data: financialData.salesOverTime.values,
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: false }
+            }
+        },
+    });
+
+    // Initialize Expenses Over Time Chart
+    const ctxExpenses = document.getElementById('expensesChart').getContext('2d');
+    const expensesChart = new Chart(ctxExpenses, {
+        type: 'bar',
+        data: {
+            labels: financialData.expensesOverTime.labels,
+            datasets: [{
+                label: 'Expenses (₱)',
+                data: financialData.expensesOverTime.values,
+                backgroundColor: 'rgba(220, 53, 69, 0.6)',
+                borderColor: 'rgba(220, 53, 69, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                title: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        },
+    });
+</script>
 {% endblock %}

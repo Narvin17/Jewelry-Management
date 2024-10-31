@@ -52,12 +52,6 @@
                                 <i class="fas fa-shopping-cart"></i> Sold Products
                             </a>
                         </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-black" href="{{ url_for('expenses') }}">
-                                    <i class="fas fa-receipt"></i> Expense List
-                                </a>
-                            </li>
-                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link text-black" href="{{ url_for('reports_dashboard') }}">
                                 <i class="fas fa-chart-line"></i> Statistical Reports
@@ -73,8 +67,14 @@
                                 <i class="fas fa-print"></i> Print Details and Barcodes
                             </a>
                         </li>
+                        {% endif %}
                          <!-- Admin link for Admin Power -->    
                         {% if current_user.role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link text-black" href="{{ url_for('expenses') }}">
+                                <i class="fas fa-receipt"></i> Expense List
+                            </a>
+                        </li>
                             <li class="nav-item">
                                 <a class="nav-link text-black" href="{{ url_for('admin_power') }}">
                                     <i class="fas fa-cog"></i> Admin Power

@@ -1,50 +1,175 @@
 {% extends 'layout.html' %}
 
 {% block header %}
-Dashboard
+    Dashboard
 {% endblock %}
 
 {% block content %}
+<!-- Inline CSS for a compact, professional look -->
+<style>
+    .container { margin-top: 15px; }
+    .card {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    .card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        transform: translateY(-2px);
+    }
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: hsl(212, 100%, 79%);
+        color: #333;
+        font-weight: 600;
+        padding: 8px;
+        font-size: 1rem;
+        position: relative;
+    }
+    .card-header .notification-button {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.3rem;
+        color: #007bff;
+        cursor: pointer;
+    }
+    .card-body { padding: 12px; color: #333; text-align: center; }
+    .card-body h5 { font-size: 1.1rem; font-weight: 500; margin-bottom: 8px; }
+    .card-body p { color: #333; font-size: 1.1rem; margin: 5px 0; }
+    .btn-custom { font-size: 0.85rem; font-weight: 600; padding: 8px 12px; border-radius: 5px; width: 100%; }
+    .btn-inventory { background-color: #2196f3; color: #fff; }
+    .btn-sold { background-color: #4caf50; color: #fff; }
+    .btn-expense { background-color: #ffc107; color: #333; }
+    
+    /* Quick link buttons */
+    .quick-link-card h6 { font-size: 1rem; margin-bottom: 10px; color: #555; }
+    .quick-link-card .btn { padding: 6px 10px; }
+
+    /* Modal Styles */
+    .modal-content { border-radius: 10px; }
+    .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+    .modal-title { font-weight: 600; }
+    .list-group-item { font-size: 0.9rem; }
+
+</style>
+
+<!-- Dashboard Container -->
 <div class="container">
-    <div class="row">
+    <!-- Welcome Section -->
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="card shadow-sm mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <span>Welcome to Your Jewelry Management Dashboard</span>
+                    <!-- Notification Button -->
+                    <button type="button" class="btn notification-button" data-bs-toggle="modal" data-bs-target="#notificationsModal">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                </div>
                 <div class="card-body">
-                    <h4 class="card-title">Welcome to the Jewelry Management Dashboard</h4>
-                    <p class="card-text">Manage your inventory, sales, and expenses easily from this dashboard.</p>
+                    <p class="card-text">
+                        Manage your inventory, sales, and expenses efficiently. Track real-time data and keep your business organized with easy navigation and detailed insights.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
+    <!-- Overview Cards Section -->
+    <div class="row text-center">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card shadow-sm bg-info text-white">
+                <div class="card-body">
+                    <h5>Total Sales</h5>
+                    <p class="card-text" style="color:black; font-weight:600;">₱{{ total_sales }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card shadow-sm bg-success text-white">
+                <div class="card-body">
+                    <h5>Total Inventory Value</h5>
+                    <p class="card-text" style="color:black; font-weight:600;">₱{{ total_inventory_value }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card shadow-sm bg-warning text-white">
+                <div class="card-body">
+                    <h5>Products Sold Today</h5>
+                    <p class="card-text" style="color:black; font-weight:600;">{{ products_sold_today }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card shadow-sm bg-danger text-white">
+                <div class="card-body">
+                    <h5>Low Stock Alerts</h5>
+                    <p class="card-text" style="color:black; font-weight:600;">{{ low_stock_count }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links Section -->
+    <div class="row mt-3">
         <div class="col-md-4">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm quick-link-card">
                 <div class="card-body text-center">
-                    <h5 class="card-title">Inventory</h5>
-                    <p class="card-text">Manage your products, check stock, and update details.</p>
-                    <a href="{{ url_for('inventory') }}" class="btn btn-primary">Go to Inventory</a>
+                    <h6>Inventory Management</h6>
+                    <a href="{{ url_for('inventory') }}" class="btn btn-primary btn-sm">Manage Inventory</a>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm quick-link-card">
                 <div class="card-body text-center">
-                    <h5 class="card-title">Sold Products</h5>
-                    <p class="card-text">Track sales performance and analyze revenue.</p>
-                    <a href="{{ url_for('sold_product') }}" class="btn btn-success">View Sold Products</a>
+                    <h6>Sales Reports</h6>
+                    <a href="{{ url_for('sales_report') }}" class="btn btn-success btn-sm">View Sales Reports</a>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm quick-link-card">
                 <div class="card-body text-center">
-                    <h5 class="card-title">Expenses</h5>
-                    <p class="card-text">Monitor expenses and manage cost effectively.</p>
-                    <a href="{{ url_for('expenses') }}" class="btn btn-warning">Check Expenses</a>
+                    <h6>Expense Tracking</h6>
+                    <a href="{{ url_for('expenses') }}" class="btn btn-warning btn-sm">Track Expenses</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Notifications Modal -->
+<div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notificationsModalLabel">Tasks & Notifications</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group">
+                    {% for notification in notifications %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ notification.message }}
+                            <span class="badge bg-primary rounded-pill">{{ notification.date }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Include FontAwesome for icons and Bootstrap for the modal -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 {% endblock %}

@@ -1,3 +1,4 @@
+
 [tool.poetry]
 name = "jewelry-business-webapp"
 version = "0.1.0"
@@ -6,6 +7,7 @@ authors = ["Narvin <narvin_castro@yahoo.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [{ include = "your_package_name" }]
+
 
 [tool.poetry.dependencies]
 python = "^3.12"

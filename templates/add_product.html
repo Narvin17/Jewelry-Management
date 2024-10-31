@@ -5,34 +5,21 @@ Add Product
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <!-- Display Flashed Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('add_product') }}" enctype="multipart/form-data">
-        <!-- CSRF Token -->
+<div class="container" style="max-width: 850px; margin-top: 50px;">
+    <form id="product-form" method="POST" action="{{ url_for('add_product') }}" enctype="multipart/form-data" class="p-3 border rounded shadow-sm" style="background-color: #fdfdfd; font-size: 0.9rem;">
         {{ form.hidden_tag() }}
-        
+
         <!-- Product Name and Category -->
-        <div class="row">
-            <div class="col-md-6 mb-2">
-                {{ form.product_name.label(class="form-label") }}
-                {{ form.product_name(class="form-control form-control-sm", placeholder="Enter product name") }}
+        <div class="row mb-3">
+            <div class="col-md-6">
+                {{ form.product_name.label(class="form-label fw-semibold text-muted") }}
+                {{ form.product_name(class="form-control form-control-sm", placeholder="Product name", id="product_name") }}
                 {% for error in form.product_name.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
             </div>
-            <div class="col-md-6 mb-2">
-                {{ form.category.label(class="form-label") }}
+            <div class="col-md-6">
+                {{ form.category.label(class="form-label fw-semibold text-muted") }}
                 {{ form.category(class="form-select form-select-sm") }}
                 {% for error in form.category.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
@@ -40,88 +27,119 @@ Add Product
             </div>
         </div>
 
-        <!-- Product Photo Upload -->
-        <div class="row">
-            <div class="col-md-6 mb-2">
-                {{ form.photo.label(class="form-label") }}
-                {{ form.photo(class="form-control form-control-sm", id="photo-input") }}
-                {% for error in form.photo.errors %}
-                    <div class="invalid-feedback d-block">{{ error }}</div>
-                {% endfor %}
-            </div>
-            <div class="col-md-6 mb-2">
-                <!-- Image Preview Section -->
-                <label class="form-label">Image Preview:</label>
-                <div id="image-preview" style="max-width: 200px; max-height: 200px; overflow: hidden;">
-                    <img id="preview-img" src="#" alt="Image Preview" class="img-fluid d-none" />
-                </div>
+        <!-- Search for Existing Image -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="searchImage()">Search Existing Image</button>
             </div>
         </div>
 
         <!-- Karat, Gold Type, and Weight -->
-        <div class="row">
-            <div class="col-md-3 mb-2">
-                {{ form.karat.label(class="form-label") }}
+        <div class="row mb-3">
+            <div class="col-md-4">
+                {{ form.karat.label(class="form-label fw-semibold text-muted") }}
                 {{ form.karat(class="form-select form-select-sm") }}
                 {% for error in form.karat.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
             </div>
-            <div class="col-md-3 mb-2">
-                {{ form.gold_type.label(class="form-label") }}
+            <div class="col-md-4">
+                {{ form.gold_type.label(class="form-label fw-semibold text-muted") }}
                 {{ form.gold_type(class="form-select form-select-sm") }}
                 {% for error in form.gold_type.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
             </div>
-            <div class="col-md-3 mb-2">
-                {{ form.weight.label(class="form-label") }}
-                {{ form.weight(class="form-control form-control-sm", placeholder="Enter weight in grams") }}
+            <div class="col-md-4">
+                {{ form.weight.label(class="form-label fw-semibold text-muted") }}
+                {{ form.weight(class="form-control form-control-sm", placeholder="Weight (g)") }}
                 {% for error in form.weight.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
             </div>
         </div>
 
-        <!-- Size and Quantity -->
-        <div class="row">
-            <div class="col-md-6 mb-2">
-                {{ form.size.label(class="form-label") }}
+        <!-- Size, Initial Quantity, and Current Stock -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                {{ form.size.label(class="form-label fw-semibold text-muted") }}
                 {{ form.size(class="form-control form-control-sm", placeholder="Available size") }}
                 {% for error in form.size.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
             </div>
-            <div class="col-md-6 mb-2">
-                {{ form.quantity.label(class="form-label") }}
-                {{ form.quantity(class="form-control form-control-sm", placeholder="Enter quantity") }}
-                {% for error in form.quantity.errors %}
+            <div class="col-md-4">
+                {{ form.initial_quantity.label(class="form-label fw-semibold text-muted") }}
+                {{ form.initial_quantity(class="form-control form-control-sm", placeholder="Initial Quantity") }}
+                {% for error in form.initial_quantity.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>            
+        </div>
+
+        <!-- Product Photo Upload and Image Preview at Bottom -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label id="photo-label" class="form-label fw-semibold text-muted">Product Photo:</label>
+                <input type="file" name="photo" id="photo-input" class="form-control form-control-sm">
+                <small id="photo-help" class="form-text text-muted">
+                    {{ "Upload a new image if no existing image is found." if not use_existing_image else "Existing image will be used if no new photo is uploaded." }}
+                </small>
+                {% for error in form.photo.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
             </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-muted">Image Previews:</label>
+                <div id="image-preview" class="d-flex flex-wrap gap-2 p-2 border rounded" style="background-color: #f7f7f7;">
+                    <!-- Dynamic image elements will be appended here -->
+                </div>
+            </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-sm mt-3">Add Product</button>
+        <button type="submit" class="btn btn-primary btn-sm w-100 mt-3">Add Product</button>
     </form>
 </div>
 
-<!-- JavaScript to handle image preview -->
 <script>
-    document.getElementById('photo-input').addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        const previewImg = document.getElementById('preview-img');
-        const previewContainer = document.getElementById('image-preview');
+    // Function to search for an existing image
+    function searchImage() {
+        const productName = document.getElementById('product_name').value.trim().replace(/ /g, "_");
+        if (!productName) {
+            alert("Please enter a product name to search.");
+            return;
+        }
 
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImg.src = e.target.result;
-                previewImg.classList.remove('d-none');
-            };
-            reader.readAsDataURL(file);
-        } else {
-            previewImg.src = '#';
-            previewImg.classList.add('d-none');
+        fetch(`/get_product_image?product_name=${encodeURIComponent(productName)}`)
+            .then(response => response.json())
+            .then(data => {
+                const previewContainer = document.getElementById('image-preview');
+                previewContainer.innerHTML = ''; // Clear previous preview
+
+                if (data.image_urls && data.image_urls.length > 0) {
+                    data.image_urls.forEach(url => {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.classList.add('img-fluid', 'm-1', 'border', 'rounded');
+                        img.style.maxWidth = '100px';
+                        previewContainer.appendChild(img);
+                    });
+                    document.getElementById("photo-help").textContent = "Existing image found. Please verify that this is the exact item.";
+                } else {
+                    alert("No images found for this product. Please upload one.");
+                    document.getElementById("photo-help").textContent = "Upload a new image if no existing image is found.";
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching product images:', error);
+            });
+    }
+
+    // Reset form on successful submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const successAlert = document.querySelector('.alert-success');
+        if (successAlert) {
+            document.getElementById('product-form').reset();
         }
     });
 </script>

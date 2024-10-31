@@ -1,20 +1,25 @@
 {% extends 'layout.html' %}
+
 {% block header %}Sales Report{% endblock %}
 
 {% block content %}
-    <!-- Form to Select Time Frame -->
-    <form method="GET" action="{{ url_for('sales_report') }}">
-        <label for="time_frame">Select Time Frame:</label>
-        <select name="time_frame" id="time_frame" class="form-select" onchange="this.form.submit()">
-            <option value="daily" {% if time_frame == 'daily' %}selected{% endif %}>Daily</option>
-            <option value="weekly" {% if time_frame == 'weekly' %}selected{% endif %}>Weekly</option>
-            <option value="monthly" {% if time_frame == 'monthly' %}selected{% endif %}>Monthly</option>
-            <option value="yearly" {% if time_frame == 'yearly' %}selected{% endif %}>Yearly</option>
+<div class="container mt-4">
+    <!-- Form to Select Date -->
+    <form method="GET" action="{{ url_for('sales_report') }}" class="form-inline mb-3">
+        <label for="date_sold" class="mr-2">Select Date:</label>
+        <select class="form-select" id="date_sold" name="date_sold" onchange="this.form.submit()" style="max-width: 200px;">
+            <option value="">All Dates</option>
+            {% for date in available_dates %}
+                <option value="{{ date }}" {% if selected_date == date %}selected{% endif %}>{{ date }}</option>
+            {% endfor %}
         </select>
+
+        <button type="button" class="btn btn-success mt-3 ml-3" onclick="printReport()">Print Report</button>
     </form>
 
     <!-- Table to Display Sales Data (Summary) -->
-    <table class="table table-bordered mt-3">
+    <h5 class="mt-4">Sales Summary</h5>
+    <table class="table table-bordered">
         <thead>
             <tr>
                 <th>Period</th>
@@ -22,24 +27,21 @@
             </tr>
         </thead>
         <tbody>
-            {% if sales_data[time_frame] %}
-                {% for row in sales_data[time_frame] %}
+            {% if sales_data.sales %}
+                {% for index in range(sales_data.sales | length) %}
                     <tr>
-                        <td>{{ row.period }}</td>
-                        <td>₱{{ row.total_sales }}</td>
+                        <td>{{ sales_data.periods[index] }}</td>
+                        <td>₱{{ sales_data.sales[index] | round(2) }}</td>
                     </tr>
                 {% endfor %}
             {% else %}
                 <tr>
-                    <td colspan="2" class="text-center">No data available for the selected time frame.</td>
+                    <td colspan="2" class="text-center">No data available for the selected date.</td>
                 </tr>
             {% endif %}
         </tbody>
     </table>
 
-    <!-- Chart for Sales Summary -->
-    <canvas id="salesChart" width="400" height="300"></canvas>
-    
     <!-- Detailed Sales Records Table -->
     <h4 class="mt-5">Detailed Sales Records</h4>
     <div class="table-responsive">
@@ -48,56 +50,41 @@
                 <tr>
                     <th>Product Name</th>
                     <th>Category</th>
-                    <th>Weight (grams)</th>
-                    <th>Price per Gram (₱)</th>
-                    <th>Total Price (₱)</th>
+                    <th>Price (₱)</th>
                     <th>Karat</th>
                     <th>Gold Type</th>
+                    <th>Weight (grams)</th>
                     <th>Size</th>
+                    <th>₱ per gram</th>
                     <th>Barcode</th>
-                    <th>Date Sold</th>
-                    <th>Actions</th>
+                    <th>Total Sales (₱)</th>
                 </tr>
             </thead>
             <tbody>
-                {% for sale in sales_records %}
+                {% for sale in detailed_sales %}
                     <tr>
                         <td>{{ sale.product_name }}</td>
                         <td>{{ sale.category }}</td>
-                        <td>{{ sale.weight }}</td>
-                        <td>{{ sale.price_per_gram }}</td>
-                        <td>{{ sale.total_price }}</td>
+                        <td>₱{{ sale.price | round(2) }}</td>
                         <td>{{ sale.karat }}</td>
                         <td>{{ sale.gold_type }}</td>
+                        <td>{{ sale.weight }}</td>
                         <td>{{ sale.size }}</td>
+                        <td>₱{{ sale.price_per_gram | round(2) }}</td>
                         <td>{{ sale.barcode }}</td>
-                        <td>{{ sale.date_sold.strftime('%Y-%m-%d') }}</td>
-                        <td>
-                            <a href="{{ url_for('view_sold_product', sale_id=sale.id) }}" class="btn btn-info btn-sm">View</a>
-                            <form action="{{ url_for('void_sale', sale_id=sale.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to void this sale?');">
-                                <button type="submit" class="btn btn-danger btn-sm">Void</button>
-                            </form>
-                        </td>
+                        <td>₱{{ sale.total_sales | round(2) }}</td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="11" class="text-center">No sales records available.</td>
+                        <td colspan="10" class="text-center">No sales records available.</td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <!-- Div for Highcharts Graph -->
-    <div id="container" style="width: 100%;"></div>
-
-    <!-- Define labels and data for the chart in JavaScript -->
-    <script type="text/javascript">
-        var labels = JSON.parse('{{ labels | default([]) | tojson | safe }}');
-        var data = JSON.parse('{{ data | default([]) | tojson | safe }}');
-    </script>
-
-    <!-- Existing Chart.js Code -->
+    <!-- Chart.js for sales data visualization -->
+    <canvas id="salesChart" class="mt-5"></canvas>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -105,50 +92,95 @@
             const salesChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,  // Use the labels variable
+                    labels: JSON.parse('{{ sales_data.periods | tojson | safe }}'),  // Day labels for the x-axis
                     datasets: [{
-                        label: 'Total Sales (₱)',
-                        data: data,  // Use the data variable
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                        tension: 0.4,
-                        borderWidth: 2,
-                        fill: true
+                        label: 'Total Sales (₱)',  // Dataset label
+                        data: JSON.parse('{{ sales_data.sales | tojson | safe }}'),  // Sales data for the y-axis
+                        borderColor: 'rgba(54, 162, 235, 1)',  // Line color
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',  // Fill color under the line
+                        tension: 0.4,  // Smoothness of the line
+                        borderWidth: 2,  // Line width
+                        fill: true  // Fill under the line
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     scales: {
                         x: {
                             title: {
                                 display: true,
-                                text: '{{ time_frame.capitalize() }}',
+                                text: '{{ sales_data.period_label }}',  // X-axis label
                             },
                         },
                         y: {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Sales (₱)',
+                                text: 'Total Sales (₱)',  // Y-axis label
                             },
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
                         }
                     }
                 }
             });
         });
-    </script>
 
-    <!-- Existing styles -->
-    <style>
-        #salesChart {
-            height: 300px !important;
-            width: 1200px !important; /* Adjust this height as needed */
+        function printReport() {
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Sales Report</title>');
+            printWindow.document.write('<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<h1>Sales Report</h1>');
+
+            // Sales Summary
+            printWindow.document.write('<h4>Sales Summary</h4>');
+            printWindow.document.write('<table class="table table-bordered"><thead><tr>');
+            printWindow.document.write('<th>Period</th><th>Total Sales (₱)</th></tr></thead><tbody>');
+
+            const salesData = JSON.parse('{{ sales_data.sales | tojson | safe }}');
+            const salesPeriods = JSON.parse('{{ sales_data.periods | tojson | safe }}');
+            if (salesData.length) {
+                salesPeriods.forEach((period, index) => {
+                    printWindow.document.write('<tr>');
+                    printWindow.document.write('<td>' + period + '</td>');
+                    printWindow.document.write('<td>₱' + salesData[index].toFixed(2) + '</td>');
+                    printWindow.document.write('</tr>');
+                });
+            } else {
+                printWindow.document.write('<tr><td colspan="2" class="text-center">No data available for the selected date.</td></tr>');
+            }
+            printWindow.document.write('</tbody></table>');
+
+            // Detailed Sales Records
+            printWindow.document.write('<h4>Detailed Sales Records</h4>');
+            printWindow.document.write('<table class="table table-bordered"><thead><tr>');
+            printWindow.document.write('<th>Product Name</th><th>Category</th><th>Price (₱)</th><th>Karat</th><th>Gold Type</th><th>Weight (grams)</th><th>Size</th><th>₱ per gram</th><th>Barcode</th><th>Total Sales (₱)</th>');
+            printWindow.document.write('</tr></thead><tbody>');
+
+            const detailedSales = JSON.parse('{{ detailed_sales | tojson | safe }}');
+            if (detailedSales.length) {
+                detailedSales.forEach(sale => {
+                    printWindow.document.write('<tr>');
+                    printWindow.document.write('<td>' + sale.product_name + '</td>');
+                    printWindow.document.write('<td>' + sale.category + '</td>');
+                    printWindow.document.write('<td>₱' + (sale.price || 0).toFixed(2) + '</td>');
+                    printWindow.document.write('<td>' + sale.karat + '</td>');
+                    printWindow.document.write('<td>' + sale.gold_type + '</td>');
+                    printWindow.document.write('<td>' + sale.weight + '</td>');
+                    printWindow.document.write('<td>' + sale.size + '</td>');
+                    printWindow.document.write('<td>₱' + (sale.price_per_gram || 0).toFixed(2) + '</td>');
+                    printWindow.document.write('<td>' + sale.barcode + '</td>');
+                    printWindow.document.write('<td>₱' + (sale.total_sales || 0).toFixed(2) + '</td>');
+                    printWindow.document.write('</tr>');
+                });
+            } else {
+                printWindow.document.write('<tr><td colspan="10" class="text-center">No sales records available.</td></tr>');
+            }
+
+            printWindow.document.write('</tbody></table>');
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.print();
         }
-    </style>
+    </script>
+</div>
 {% endblock %}
