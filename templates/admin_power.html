@@ -1,3 +1,4 @@
+<!-- templates/admin_power.html -->
 {% extends 'layout.html' %}
 
 {% block header %}
@@ -123,25 +124,25 @@
                 </tr>
             </thead>
             <tbody>
-                {% for product in sold_products %}
-                <tr data-product-name="{{ product.product_name }}" data-timestamp="{{ product.date_sold.timestamp() }}">
-                    <td>{{ product.product_name }}</td>
-                    <td>{{ product.size }}</td>
-                    <td>{{ product.weight }} g</td>
-                    <td>{{ product.karat }}</td> <!-- Display Karat -->
-                    <td>{{ product.gold_type }}</td> <!-- Display Gold Type -->
+                {% for sale in sold_products %}
+                <tr data-product-name="{{ sale.product.product_name }}" data-timestamp="{{ sale.date_sold.timestamp() }}">
+                    <td>{{ sale.product.product_name }}</td>
+                    <td>{{ sale.product.size }}</td>
+                    <td>{{ sale.product.weight }} g</td>
+                    <td>{{ sale.product.karat }}</td> <!-- Display Karat -->
+                    <td>{{ sale.product.gold_type }}</td> <!-- Display Gold Type -->
                     <td>
-                        {% if product.price_per_gram %}
-                            ₱ {{ "%.2f"|format(product.price_per_gram) }}
+                        {% if sale.price_per_gram %}
+                            ₱ {{ "%.2f"|format(sale.price_per_gram) }}
                         {% else %}
                             <span class="text-muted">N/A</span>
                         {% endif %}
                     </td>
                     <td>
-                        ₱ {{ "%.2f"|format(product.total_price) }}
+                        ₱ {{ "%.2f"|format(sale.total_price) }}
                     </td>
-                    <td>{{ product.barcode }}</td> <!-- Display Barcode -->
-                    <td>{{ product.date_sold.strftime('%Y-%m-%d - %H:%M:%S') }}</td>
+                    <td>{{ sale.product.barcode }}</td> <!-- Display Barcode -->
+                    <td>{{ sale.date_sold.strftime('%Y-%m-%d - %H:%M:%S') }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -150,8 +151,7 @@
     {% else %}
         <p>No sold products for the selected date.</p>
     {% endif %}
-    
-    
+
     <h2 class="section-title mb-4">Inventory Added Date</h2>
     <form method="GET" action="{{ url_for('admin_power') }}" class="filter-form mb-4">
         <div class="row g-3 align-items-center">
@@ -168,101 +168,100 @@
             </div>
         </div>
     </form>
+
     <!-- Inventory Statistics -->
-<!-- Inventory Statistics -->
-<div class="row g-4 mb-5">
-    <div class="col-md-4">
-        <div class="card bg-info text-white h-100 shadow-sm admin-card">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">Total Inventory Value</h5>
-                <p class="card-text display-4">₱{{ total_inventory_value | round(2) }}</p>
-                <button class="btn btn-light btn-sm mt-auto" onclick="toggleVisibility('inventory-table')">View Details</button>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card bg-info text-white h-100 shadow-sm admin-card">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Total Inventory Value</h5>
+                    <p class="card-text display-4">₱{{ total_inventory_value | round(2) }}</p>
+                    <button class="btn btn-light btn-sm mt-auto" onclick="toggleVisibility('inventory-table')">View Details</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-secondary text-white h-100 shadow-sm admin-card">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Products Added on {{ selected_added_date }}</h5>
+                    <p class="card-text display-4">{{ added_products_count }}</p> <!-- Corrected variable name -->
+                    <button class="btn btn-light btn-sm mt-auto" onclick="toggleVisibility('inventory-table')">View Details</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white h-100 shadow-sm admin-card">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Available</h5>
+                    <p class="card-text display-4">{{ total_available_items }}</p>
+                    <button class="btn btn-light btn-sm mt-auto" onclick="toggleVisibility('inventory-table')">View Details</button>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card bg-secondary text-white h-100 shadow-sm admin-card">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">Products Added on {{ selected_added_date }}</h5>
-                <p class="card-text display-4">{{ added_products_count }}</p> <!-- Corrected variable name -->
-                <button class="btn btn-light btn-sm mt-auto" onclick="toggleVisibility('inventory-table')">View Details</button>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card bg-success text-white h-100 shadow-sm admin-card">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">Available</h5>
-                <p class="card-text display-4">{{ total_available_items }}</p>
-                <button class="btn btn-light btn-sm mt-auto" onclick="toggleVisibility('inventory-table')">View Details</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-{% if inventory_grouped %}
-<div class="mb-5">
-    <h3>Inventory Overview</h3>
-    <table class="table table-bordered table-striped admin-table" id="inventory-table" style="display: none;">
-        <thead class="table-dark">
-            <tr>
-                <th>Batch #</th>
-                <th>Product Name</th>
-                <th>Size</th>
-                <th>Weight</th>
-                <th>Quantity</th>
-                <th>(₱) per Gram</th>
-                <th>Inventory Value</th>
-                <th>Date Added</th>
-                <th>Available</th>
-                <th>Existence</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for product in inventory_grouped %}
-            <tr data-batch-number="{{ product.batch_number }}" data-product-name="{{ product.product_name }}">
-                <td>{{ product.batch_number }}</td>
-                <td>{{ product.product_name }}</td>
-                <td>{{ product.size }}</td>
-                <td>{{ product.weight }} g</td>
-                <td>{{ product.initial_quantity }}</td>
-                <td>
-                    {% if product.price_per_gram %}
-                        ₱ {{ "%.2f"|format(product.price_per_gram) }}
-                    {% else %}
-                        <span class="text-muted">N/A</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if product.price_per_gram %}
-                        ₱ {{ "%.2f"|format(product.inventory_value) }}
-                    {% else %}
-                        <span class="text-muted">N/A</span>
-                    {% endif %}
-                </td>
-                <td>{{ product.created_at.strftime('%Y-%m-%d - %H:%M:%S') }}</td>
-                <td>
-                    <span class="text-success" data-bs-toggle="tooltip" title="Available">
-                        <i class="fas fa-check-circle"></i> {{ product.current_stock }} Stocks
-                    </span>
-                </td>
-                <td>{{ product.existence }}</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="openRemoveBatchModal('{{ product.batch_number }}', '{{ product.product_name }}')">
-                        <i class="fas fa-trash-alt"></i> Remove Batch
-                    </button>                                    
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% else %}
-    <p>No products added for the selected date.</p>
-{% endif %}
+    {% if inventory_grouped %}
+    <div class="mb-5">
+        <h3>Inventory Overview</h3>
+        <table class="table table-bordered table-striped admin-table" id="inventory-table" style="display: none;">
+            <thead class="table-dark">
+                <tr>
+                    <th>Batch #</th>
+                    <th>Product Name</th>
+                    <th>Size</th>
+                    <th>Weight</th>
+                    <th>Quantity</th>
+                    <th>(₱) per Gram</th>
+                    <th>Inventory Value</th>
+                    <th>Date Added</th>
+                    <th>Available</th>
+                    <th>Existence</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in inventory_grouped %}
+                <tr data-batch-number="{{ product.batch_number }}" data-product-name="{{ product.product_name }}">
+                    <td>{{ product.batch_number }}</td>
+                    <td>{{ product.product_name }}</td>
+                    <td>{{ product.size }}</td>
+                    <td>{{ product.weight }} g</td>
+                    <td>{{ product.initial_quantity }}</td>
+                    <td>
+                        {% if product.frozen_price_per_gram %}
+                            ₱ {{ "%.2f"|format(product.frozen_price_per_gram) }}
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if product.frozen_price_per_gram %}
+                            ₱ {{ "%.2f"|format(product.inventory_value) }}
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ product.created_at.strftime('%Y-%m-%d - %H:%M:%S') }}</td>
+                    <td>
+                        <span class="text-success" data-bs-toggle="tooltip" title="Available">
+                            <i class="fas fa-check-circle"></i> {{ product.current_stock }} Stocks
+                        </span>
+                    </td>
+                    <td>{{ product.existence }}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="openRemoveBatchModal('{{ product.batch_number }}', '{{ product.product_name }}')">
+                            <i class="fas fa-trash-alt"></i> Remove Batch
+                        </button>                                    
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p>No products added for the selected date.</p>
+    {% endif %}
 
-    
     <!-- Modal for batch removal confirmation -->
     <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -284,65 +283,65 @@
         </div>
     </div>
 
-<!-- Include Bootstrap JS at the end of the body -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Include Bootstrap JS and FontAwesome for icons -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
-<script>
-    let batchNumberToRemove = '';
-    let productNameToRemove = '';
+    <script>
+        let batchNumberToRemove = '';
+        let productNameToRemove = '';
 
-    function openRemoveBatchModal(batchNumber, productName) {
-        batchNumberToRemove = parseInt(batchNumber);  // Convert to integer
-        productNameToRemove = productName;
-        document.getElementById('expectedProductName').textContent = productName;
-        document.getElementById('confirmationInput').value = '';
-        document.getElementById('confirmButton').disabled = true;
+        function openRemoveBatchModal(batchNumber, productName) {
+            batchNumberToRemove = parseInt(batchNumber);  // Convert to integer
+            productNameToRemove = productName;
+            document.getElementById('expectedProductName').textContent = productName;
+            document.getElementById('confirmationInput').value = '';
+            document.getElementById('confirmButton').disabled = true;
 
-        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-        modal.show();
-    }
-
-
-    function validateConfirmation() {
-        const input = document.getElementById('confirmationInput').value;
-        const confirmButton = document.getElementById('confirmButton');
-        confirmButton.disabled = input !== productNameToRemove;
-    }
-
-    function removeBatch() {
-        console.log("Attempting to remove batch:", batchNumberToRemove, productNameToRemove);  // For debugging
-        fetch('/remove_batch', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                batch_number: batchNumberToRemove,
-                product_name: productNameToRemove
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.message) {
-                // Remove rows with matching batch number and product name
-                document.querySelectorAll(`tr[data-batch-number="${batchNumberToRemove}"][data-product-name="${productNameToRemove}"]`).forEach(row => row.remove());
-                alert(data.message);
-            } else if (data.error) {
-                alert(data.error);
-            }
-        })
-        .catch(error => {
-            console.error("Error removing batch:", error);
-            alert("An error occurred while removing the batch.");
-        });
-    }
-
-    function toggleVisibility(tableId) {
-        const table = document.getElementById(tableId);
-        if (table) {
-            table.style.display = (table.style.display === "none" || table.style.display === "") ? "table" : "none";
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
         }
-    }
-</script>
+
+        function validateConfirmation() {
+            const input = document.getElementById('confirmationInput').value;
+            const confirmButton = document.getElementById('confirmButton');
+            confirmButton.disabled = input !== productNameToRemove;
+        }
+
+        function removeBatch() {
+            console.log("Attempting to remove batch:", batchNumberToRemove, productNameToRemove);  // For debugging
+            fetch('/remove_batch', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'  // Ensure CSRF protection
+                },
+                body: JSON.stringify({
+                    batch_number: batchNumberToRemove,
+                    product_name: productNameToRemove
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    // Remove rows with matching batch number and product name
+                    document.querySelectorAll(`tr[data-batch-number="${batchNumberToRemove}"][data-product-name="${productNameToRemove}"]`).forEach(row => row.remove());
+                    alert(data.message);
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Error removing batch:", error);
+                alert("An error occurred while removing the batch.");
+            });
+        }
+
+        function toggleVisibility(tableId) {
+            const table = document.getElementById(tableId);
+            if (table) {
+                table.style.display = (table.style.display === "none" || table.style.display === "") ? "table" : "none";
+            }
+        }
+    </script>
 {% endblock %}

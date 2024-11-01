@@ -12,4 +12,4 @@ signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
 # Serve the application
-serve(app, host='0.0.0.0', port=8000)
+app.run(host='0.0.0.0', port=8000)

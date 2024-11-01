@@ -1,20 +1,19 @@
-from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session, send_file
+from flask import abort, Flask, jsonify, render_template, request, redirect, url_for, flash, session, send_file
 from models.database import db, Inventory, SoldProduct, Expense, UserLogin, User, GoldPrice
 from forms.forms import AddProductForm, EditProductForm, AddExpenseForm, LoginForm, GoldPricesForm, CreateUserForm, MarkAsSoldForm, CheckoutForm
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_migrate import Migrate
 from datetime import datetime
 from barcode.writer import ImageWriter
-from math import ceil
-from barcode import Code128
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import func
+from sqlalchemy import and_, func
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from flask_talisman import Talisman
-from sqlalchemy import cast, Date
 from dotenv import load_dotenv
+from urllib.parse import urlencode
+
 
 import os
 import random
@@ -33,9 +32,9 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/images')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
 
-app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to False if not using HTTPS (development only)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # This setting is usually fine for IP access
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Ensure it's None so that IP addresses work properly
 
 csrf = CSRFProtect(app)
 db.init_app(app)
@@ -57,6 +56,7 @@ if os.getenv('FLASK_ENV') == 'production':
     talisman = Talisman(app, content_security_policy=csp, force_https=True)
 else:
     talisman = Talisman(app, content_security_policy=None, force_https=False)
+
 # CSRF Error handler
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
@@ -85,6 +85,11 @@ def user_profiles():
     form = CreateUserForm()  # Create an instance of the form
 
     return render_template('user_profiles.html', users=users, form=form)
+
+@app.route('/')
+def home():
+    print(request.args)  # Log query parameters to console
+    return render_template('dashboard.html')
 
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
@@ -168,26 +173,40 @@ def generate_barcode(category, karat, gold_type):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
+
     if form.validate_on_submit():
+        # Retrieve and sanitize user input
         username = form.username.data.strip()
         password = form.password.data.strip()
+
+        # Query for the user in the database
         user = User.query.filter_by(username=username).first()
 
-        if user and check_password_hash(user.password, password):
-            login_user(user)
+        if user:
+            # Check the password
+            if check_password_hash(user.password, password):
+                # Log the user in
+                login_user(user)
 
-            # Log the login time
-            new_login = UserLogin(user_id=user.id)
-            db.session.add(new_login)
-            db.session.commit()
+                # Record the login time for the user
+                new_login = UserLogin(user_id=user.id)
+                try:
+                    db.session.add(new_login)
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    flash('An error occurred while logging the login time.', 'error')
+                    return redirect(url_for('login'))
 
-            flash('Login successful!', 'success')
-            return redirect(url_for('dashboard'))
+                flash('Login successful!', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Invalid username or password', 'error')
         else:
             flash('Invalid username or password', 'error')
 
+    # Render the login template with the form
     return render_template('login.html', form=form)
-
 
 @app.route('/create_user', methods=['GET', 'POST'])
 @login_required
@@ -383,7 +402,7 @@ def inventory():
 
     # Fetch pagination data from query parameters
     page = request.args.get('page', 1, type=int)
-    per_page = 1000  # Number of items per page for the main table
+    per_page = 50  # Limit to 50 items per page for the main table
 
     # Base query for inventory - exclude deleted and sold items
     query = Inventory.query.with_entities(
@@ -403,7 +422,7 @@ def inventory():
     ).filter(
         (Inventory.existence == 'Exists') & 
         (~Inventory.status.in_(['Sold', 'Sold Out']))  # Exclude "Sold" and "Sold Out"
-    )
+    ).order_by(Inventory.id.desc())  # Order by id in descending order
 
     # Paginate the main inventory items
     paginated_items = query.paginate(page=page, per_page=per_page, error_out=False)
@@ -423,6 +442,8 @@ def inventory():
         prices=fetch_gold_prices(),
         form=gold_prices_form
     )
+
+
 
 @app.route('/inventory_tree')
 @login_required
@@ -474,73 +495,105 @@ def fetch_gold_prices():
 
 # Updated catalog route
 
+
 @app.route('/catalog')
 def catalog():
-    # Initialize the query to get all existing inventory items (filter by 'Exists' for accurate stock)
-    query = Inventory.query.filter(Inventory.existence == 'Exists')
+    # Initialize the base query with an outer join to include all inventory items
+    query = Inventory.query.outerjoin(
+        GoldPrice,
+        and_(
+            Inventory.gold_type == GoldPrice.gold_type,
+            Inventory.karat == GoldPrice.karat
+        )
+    ).filter(
+        Inventory.existence == 'Exists'  # Include only existing items
+    )
 
-    # Fetch all gold prices to use in calculations
+    # Fetch all gold prices to use in calculations (if needed in templates)
     gold_prices = {f"{gp.gold_type}_{gp.karat}": gp.price_per_gram for gp in GoldPrice.query.all()}
 
     # Get filtering criteria from request arguments
-    category = request.args.get('category', 'all')
-    price_min = request.args.get('price_min', 0, type=float)
-    price_max = request.args.get('price_max', float('inf'), type=float)
-    sort_by = request.args.get('sort_by', 'price_asc')
-    karat = request.args.get('karat', 'all')
-    gold_type = request.args.get('gold_type', 'all')
-    search_query = request.args.get('search_query', '').strip()
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 50, type=int)
+    filters = {
+        'category': request.args.get('category', 'all'),
+        'price_min': request.args.get('price_min', 0.0, type=float),
+        'price_max': request.args.get('price_max', float('inf'), type=float),
+        'sort_by': request.args.get('sort_by', 'price_asc'),
+        'karat': request.args.get('karat', 'all'),
+        'gold_type': request.args.get('gold_type', 'all'),
+        'search_query': request.args.get('search_query', '').strip(),
+        'page': request.args.get('page', 1, type=int),
+        'per_page': request.args.get('per_page', 50, type=int),
+    }
 
-    # Set distinct filter options for categories, karats, and gold types
-    categories = [c[0] for c in Inventory.query.with_entities(Inventory.category).distinct().all()]
-    karats = [k[0] for k in Inventory.query.with_entities(Inventory.karat).distinct().all()]
-    gold_types = [g[0] for g in Inventory.query.with_entities(Inventory.gold_type).distinct().all()]
+    # Apply filters
+    if filters['category'] != 'all':
+        query = query.filter(Inventory.category == filters['category'])
+    if filters['karat'] != 'all':
+        query = query.filter(Inventory.karat == filters['karat'])
+    if filters['gold_type'] != 'all':
+        query = query.filter(Inventory.gold_type == filters['gold_type'])
+    if filters['search_query']:
+        query = query.filter(Inventory.product_name.ilike(f"%{filters['search_query']}%"))
 
-    # Apply filtering based on category, karat, gold type, and search query
-    if category != 'all':
-        query = query.filter(Inventory.category == category)
-    if karat != 'all':
-        query = query.filter(Inventory.karat == karat)
-    if gold_type != 'all':
-        query = query.filter(Inventory.gold_type == gold_type)
-    if search_query:
-        query = query.filter(Inventory.product_name.ilike(f'%{search_query}%'))
+    # Calculate total price expression for price range filtering and sorting
+    total_price_expr = (GoldPrice.price_per_gram * Inventory.weight).label('total_price')
 
-    # Fetch and filter items by price range, only for existing items
-    filtered_items = []
-    for item in query.all():
-        price_key = f"{item.gold_type}_{item.karat}"
-        item_price_per_gram = gold_prices.get(price_key, 0)
-        item_total_price = item_price_per_gram * item.weight
+    # Apply price filtering, handling nulls gracefully
+    query = query.filter(
+        ((total_price_expr >= filters['price_min']) | (GoldPrice.price_per_gram.is_(None))),
+        ((total_price_expr <= filters['price_max']) | (GoldPrice.price_per_gram.is_(None)))
+    )
 
-        if price_min <= item_total_price <= price_max:
-            item.total_price = item_total_price
-            filtered_items.append(item)
+    # Apply sorting
+    sorting_options = {
+        'price_asc': total_price_expr.asc().nulls_last(),
+        'price_desc': total_price_expr.desc().nulls_last(),
+        'newest': Inventory.created_at.desc(),
+    }
+    query = query.order_by(sorting_options.get(filters['sort_by'], Inventory.created_at.desc()))
 
-    # Sorting logic for filtered items
-    if sort_by == 'price_asc':
-        filtered_items.sort(key=lambda x: x.total_price)
-    elif sort_by == 'price_desc':
-        filtered_items.sort(key=lambda x: x.total_price, reverse=True)
-    elif sort_by == 'newest':
-        filtered_items.sort(key=lambda x: x.created_at, reverse=True)
+    # Paginate the query to handle a large number of products
+    paginated_items = query.add_columns(total_price_expr).paginate(page=filters['page'], per_page=filters['per_page'], error_out=False)
 
-    # Paginate items
-    total_items = len(filtered_items)
-    total_pages = (total_items + per_page - 1) // per_page
-    paginated_items = filtered_items[(page - 1) * per_page:page * per_page]
+    # Prepare data for rendering
+    items = paginated_items.items  # List of tuples: (Inventory, total_price)
+    total_pages = paginated_items.pages
 
-    # Group products hierarchically by Karat > Gold Type > Category > Product Name
+    # Group products with appropriate handling for detailed product information
+    products_grouped = group_products(items, gold_prices)
+
+    # Prepare recently viewed items for display
+    recently_viewed = get_recently_viewed_items()
+
+    # Render the template with data
+    return render_template(
+        'catalog.html',
+        products=products_grouped,
+        recently_viewed=recently_viewed,
+        categories=get_distinct_values(Inventory, 'category'),
+        karats=get_distinct_values(Inventory, 'karat'),
+        gold_types=get_distinct_values(Inventory, 'gold_type'),
+        previous_page=paginated_items.prev_num,
+        next_page=paginated_items.next_num,
+        total_pages=total_pages,
+        current_page=filters['page'],
+        prices=gold_prices,  # Pass `gold_prices` to the template
+        **filters
+    )
+
+def get_distinct_values(model, field):
+    """Helper function to get distinct values of a given field."""
+    return [value[0] for value in model.query.with_entities(getattr(model, field)).distinct().all()]
+
+def group_products(items, gold_prices):
+    """Helper function to group products hierarchically and include detailed product data."""
     products_grouped = {}
-    for item in paginated_items:
+    for item, total_price in items:
         karat_key = item.karat
         gold_type_key = item.gold_type
         category_key = item.category
         product_name_key = item.product_name.replace(" ", "_")
 
-        # Initialize the nested dictionary
         if karat_key not in products_grouped:
             products_grouped[karat_key] = {}
         if gold_type_key not in products_grouped[karat_key]:
@@ -548,10 +601,10 @@ def catalog():
         if category_key not in products_grouped[karat_key][gold_type_key]:
             products_grouped[karat_key][gold_type_key][category_key] = {}
 
-        # Store product details with image URL
         if product_name_key not in products_grouped[karat_key][gold_type_key][category_key]:
-            image_path = os.path.join(app.static_folder, 'images', f"{product_name_key}.png")
-            image_url = f"images/{product_name_key}.png" if os.path.exists(image_path) else 'images/default.png'
+            image_path = f"images/{product_name_key}.png"
+            image_full_path = os.path.join(app.static_folder, image_path)
+            image_url = image_path if os.path.exists(image_full_path) else 'images/default.png'
             products_grouped[karat_key][gold_type_key][category_key][product_name_key] = {
                 'product': item,
                 'variations': {},
@@ -559,50 +612,37 @@ def catalog():
                 'image_url': image_url,
             }
 
-        # Aggregate stock for unique size-weight combinations, excluding deleted items
         product_entry = products_grouped[karat_key][gold_type_key][category_key][product_name_key]
         product_entry['total_stock'] += item.current_stock
 
-        size_weight_key = (item.size, item.weight)  # Unique key for size and weight
+        size_weight_key = (item.size, item.weight)
         if size_weight_key not in product_entry['variations']:
+            calculated_price = item.calculate_price_per_unit(gold_prices)
             product_entry['variations'][size_weight_key] = {
                 'size': item.size,
                 'weight': item.weight,
                 'stock': item.current_stock,
-                'price': item.total_price,
+                'price': calculated_price if calculated_price else item.price_per_unit
             }
         else:
-            # Aggregate stock for duplicate size-weight combinations
             product_entry['variations'][size_weight_key]['stock'] += item.current_stock
 
-    # Prepare recently viewed items
-    recently_viewed = Inventory.query.filter(Inventory.existence == 'Exists').order_by(Inventory.id.desc()).limit(4).all()
-    for item in recently_viewed:
-        item.total_price = gold_prices.get(f"{item.gold_type}_{item.karat}", 0) * item.weight
+    return products_grouped
 
-    # Render the catalog with all data and filters
-    return render_template(
-        'catalog.html',
-        products=products_grouped,
-        recently_viewed=recently_viewed,
-        categories=categories,
-        karats=karats,
-        gold_types=gold_types,
-        previous_page=page - 1 if page > 1 else None,
-        next_page=page + 1 if page < total_pages else None,
-        total_pages=total_pages,
-        current_page=page,
-        category=category,
-        price_min=price_min,
-        price_max=price_max,
-        karat=karat,
-        gold_type=gold_type,
-        sort_by=sort_by,
-        per_page=per_page,
-        prices=gold_prices,
-        search_query=search_query,
-    )
+def get_recently_viewed_items():
+    """Helper function to fetch recently viewed items."""
+    recently_viewed_query = Inventory.query.filter(
+        Inventory.existence == 'Exists'
+    ).order_by(Inventory.id.desc()).limit(4)
 
+    recently_viewed_items = recently_viewed_query.all()
+
+    return recently_viewed_items
+
+@app.template_filter('dict_to_urlencode')
+def dict_to_urlencode(d):
+    """Custom filter to URL-encode a dictionary."""
+    return urlencode(d)
 
 @app.route('/pos_view', methods=['GET'])
 @login_required
@@ -1688,6 +1728,11 @@ def sales_report():
 @app.route('/admin_power', methods=['GET'])
 @login_required
 def admin_power():
+    # Check if the logged-in user has the 'admin' role
+    if not current_user.role == 'admin':
+        flash('Access denied: You do not have permission to view this page.', 'danger')
+        abort(403)  # HTTP 403 Forbidden
+
     today_date = datetime.today()
     current_date_str = today_date.strftime('%Y-%m-%d')
 
@@ -1843,6 +1888,8 @@ def admin_power():
             'weight': total_weight,
             'initial_quantity': initial_quantity,
             'price_per_gram': price_per_gram,
+            'frozen_price_per_gram': price_per_gram,  # Changed key
+
             'inventory_value': inventory_value,
             'created_at': item.created_at,
             'current_stock': max(current_stock, 0),
@@ -1871,6 +1918,7 @@ def admin_power():
         user_logins=user_logins,
         prices=prices
     )
+    
 
 @app.route('/remove_batch', methods=['DELETE'])
 @login_required

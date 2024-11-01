@@ -8,9 +8,8 @@ IF %ERRORLEVEL% EQU 0 (
     taskkill /F /IM python.exe
 )
 
-REM Start the Flask app using Poetry
-start /B poetry run python run.py
-timeout /t 2
+REM Start the Flask app using Poetry (tied to the cmd session)
+poetry run python run.py
 
-REM Open the web browser
+REM Open the web browser (this will only run after the Python app exits)
 start http://127.0.0.1:8000/login

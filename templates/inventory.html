@@ -21,6 +21,31 @@
         </button>
     </div>
 </div>
+
+<!-- Pagination Controls -->
+<nav aria-label="Page navigation" class="mt-2">
+    <ul class="pagination justify-content-center">
+        {% if current_page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('inventory', page=current_page - 1) }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+        {% endif %}
+        {% for page_num in range(1, total_pages + 1) %}
+            <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('inventory', page=page_num) }}">{{ page_num }}</a>
+            </li>
+        {% endfor %}
+        {% if current_page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('inventory', page=current_page + 1) }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
 {% endblock %}
 
 {% block content %}
@@ -55,7 +80,7 @@ function openMarkAsSoldModal(productId) {
 <!-- Inventory Table -->
 <div class="container mt-4" style="padding-top: 0; margin-top: 0;">
     <div class="table-responsive" style="margin-top: 0;">
-        <table class="table table-bordered table-striped align-middle" style="margin-top: 0;">
+        <table class="table table-bordered table-striped align-middle">
             <thead class="table-dark">
                 <tr>
                     <th style="width: 15px; font-size: 0.65rem;">ID</th>
@@ -179,15 +204,6 @@ function openMarkAsSoldModal(productId) {
     </div>
 </div>
 
-<script>
-    function openMarkAsSoldModal(productId) {
-        document.getElementById('modal-product-id').value = productId;
-        document.getElementById('markSoldForm').action = "{{ url_for('mark_as_sold', product_id='') }}" + productId;
-        var markAsSoldModal = new bootstrap.Modal(document.getElementById('markAsSoldModal'));
-        markAsSoldModal.show();
-    }
-</script>
-
 <!-- Inventory Tree Modal -->
 <div class="modal fade" id="inventoryTreeModal" tabindex="-1" aria-labelledby="inventoryTreeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -243,18 +259,18 @@ function openMarkAsSoldModal(productId) {
 </div>
 
 <script>
-    function submitInventoryTree() {
-        const checkboxes = document.querySelectorAll('.form-check-input:checked');
-        let selectedProducts = [];
+function submitInventoryTree() {
+    const checkboxes = document.querySelectorAll('.form-check-input:checked');
+    let selectedProducts = [];
 
-        checkboxes.forEach(checkbox => {
-            selectedProducts.push(checkbox.value);
-        });
+    checkboxes.forEach(checkbox => {
+        selectedProducts.push(checkbox.value);
+    });
 
-        // Handle the selected product IDs as needed
-        console.log(selectedProducts); // For demonstration
-        alert("Count submitted: " + selectedProducts.join(', ')); // Replace with actual submission logic
-    }
+    // Handle the selected product IDs as needed
+    console.log(selectedProducts); // For demonstration
+    alert("Count submitted: " + selectedProducts.join(', ')); // Replace with actual submission logic
+}
 </script>
 
 <!-- Ensure Bootstrap JS is included -->
@@ -262,18 +278,18 @@ function openMarkAsSoldModal(productId) {
 
 <!-- Tooltip Initialization -->
 <script>
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+});
 </script>
 
 <style>
-    /* CSS for row hover effect */
-    tbody tr:hover {
-        background-color: #d1ecf1; /* Light cyan background on hover */
-        cursor: pointer; /* Change cursor to pointer */
-    }
+/* CSS for row hover effect */
+tbody tr:hover {
+    background-color: #d1ecf1; /* Light cyan background on hover */
+    cursor: pointer; /* Change cursor to pointer */
+}
 </style>
 
 {% endblock %}
