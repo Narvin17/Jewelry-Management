@@ -172,4 +172,26 @@
 {% block scripts %}
 <!-- Include FontAwesome for icons and Bootstrap for the modal -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script>
+    // JavaScript to display real-time Philippine time
+    function updatePhilippineTime() {
+        const date = new Date();
+        const options = {
+            timeZone: 'Asia/Manila',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour12: false
+        };
+        const philippineTime = new Intl.DateTimeFormat('en-US', options).format(date);
+        document.getElementById('philippine-time').innerText = `Philippine Time: ${philippineTime}`;
+    }
+
+    // Update time every second
+    setInterval(updatePhilippineTime, 1000);
+    updatePhilippineTime();  // Initial call to display time immediately
+</script>
 {% endblock %}

@@ -14,12 +14,24 @@ from flask_talisman import Talisman
 from dotenv import load_dotenv
 from urllib.parse import urlencode
 
-
 import os
 import random
 import string
 import barcode
 import logging
+
+from datetime import datetime, timedelta
+
+# Define the offset for Philippine Standard Time (GMT+8)
+philippine_offset = timedelta(hours=8)
+# Sample timestamp without timezone (UTC)
+utc_timestamp = datetime.strptime("2024-10-31 07:48:53.800508", "%Y-%m-%d %H:%M:%S.%f")
+# Convert UTC timestamp to Philippine time
+philippine_time = utc_timestamp + philippine_offset
+# Format the datetime to display in the desired format
+philippine_time_formatted = philippine_time.strftime("%Y-%m-%d %H:%M:%S")
+print("Philippine Time:", philippine_time_formatted)
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,6 +68,15 @@ if os.getenv('FLASK_ENV') == 'production':
     talisman = Talisman(app, content_security_policy=csp, force_https=True)
 else:
     talisman = Talisman(app, content_security_policy=None, force_https=False)
+
+
+@app.template_filter('to_philippine_time')
+def to_philippine_time(value):
+    if isinstance(value, datetime):
+        philippine_offset = timedelta(hours=8)
+        philippine_time = value + philippine_offset
+        return philippine_time.strftime("%Y-%m-%d %H:%M:%S")
+    return value
 
 # CSRF Error handler
 @app.errorhandler(CSRFError)
@@ -1827,6 +1848,8 @@ def admin_power():
             remaining_sold_quantities[key] = 0
         remaining_sold_quantities[key] += sale.current_stock_sold
 
+    total_deleted_items = sum(1 for item in added_products if item.existence == 'Deleted')
+
     # Group added products by batch number and other attributes
     products_grouped = {}
     for item in added_products:
@@ -1887,9 +1910,8 @@ def admin_power():
             'size': size,
             'weight': total_weight,
             'initial_quantity': initial_quantity,
-            'price_per_gram': price_per_gram,
-            'frozen_price_per_gram': price_per_gram,  # Changed key
-
+            'price_per_gram': price_per_gram,  # This represents current price if needed
+            'frozen_price_per_gram': item.frozen_price_per_gram,  # Ensure this is the value used from the database
             'inventory_value': inventory_value,
             'created_at': item.created_at,
             'current_stock': max(current_stock, 0),
@@ -1909,6 +1931,7 @@ def admin_power():
         inventory_grouped=inventory_grouped_list,
         total_inventory_value=total_inventory_value,
         total_available_items=total_available_items,
+        total_deleted_items=total_deleted_items,  # New variable
         selected_date=selected_date,
         selected_sold_date=selected_sold_date,
         selected_added_date=selected_added_date,

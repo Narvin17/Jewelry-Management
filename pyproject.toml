@@ -56,6 +56,7 @@ wheel = "0.40.0"
 wrapt = "1.16.0"
 WTForms = "3.0.1"
 python-barcode = "0.13.1"
+pytz = "^2024.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -142,7 +142,7 @@
                         ₱ {{ "%.2f"|format(sale.total_price) }}
                     </td>
                     <td>{{ sale.product.barcode }}</td> <!-- Display Barcode -->
-                    <td>{{ sale.date_sold.strftime('%Y-%m-%d - %H:%M:%S') }}</td>
+                    <td>{{ sale.date_sold | to_philippine_time }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -228,12 +228,12 @@
                     <td>{{ product.weight }} g</td>
                     <td>{{ product.initial_quantity }}</td>
                     <td>
-                        {% if product.frozen_price_per_gram %}
+                        {% if product.frozen_price_per_gram is not none %}
                             ₱ {{ "%.2f"|format(product.frozen_price_per_gram) }}
                         {% else %}
                             <span class="text-muted">N/A</span>
                         {% endif %}
-                    </td>
+                    </td>                    
                     <td>
                         {% if product.frozen_price_per_gram %}
                             ₱ {{ "%.2f"|format(product.inventory_value) }}
@@ -241,7 +241,7 @@
                             <span class="text-muted">N/A</span>
                         {% endif %}
                     </td>
-                    <td>{{ product.created_at.strftime('%Y-%m-%d - %H:%M:%S') }}</td>
+                    <td>{{ product.created_at | to_philippine_time }}</td>
                     <td>
                         <span class="text-success" data-bs-toggle="tooltip" title="Available">
                             <i class="fas fa-check-circle"></i> {{ product.current_stock }} Stocks
